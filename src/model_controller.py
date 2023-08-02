@@ -28,16 +28,32 @@ async def iniciar_app():
     user_DAO = UserDao(db)
     project_DAO = ProjectDao(db)
 
-@app.post("/project")
+@app.post("/saveproject")
 async def guardar_modelo(user_id: int, project: dict):
     return project_DAO.create_project(project,user_id)
 
-@app.get("/getModel")
-async def obtener_modelo(user_id : int, project_id : int, db: Session = Depends(get_db)):
+@app.get("/getProjects")
+async def obtener_modelos(user_id : int, db: Session = Depends(get_db)):
+    return user_DAO.get_projects(user_id)
+
+@app.get("/getProject")
+async def obtener_modelo(project_id : int, db: Session = Depends(get_db)):
+    return project_DAO.get_by_id(project_id)
+
+@app.get("/shareproject")
+async def compartir_modelo(user_id : int, project_id : int, db: Session = Depends(get_db)):
+    return project_DAO.share_project(project_id,user_id)
+
+@app.get("/usersproject")
+async def obtener_usuarios_proyecto(project_id : int, db: Session = Depends(get_db)):
+    return project_DAO.get_users(project_id)
+
+@app.get("/finduser")
+async def buscar_usuario_email(project_id : int, db: Session = Depends(get_db)):
     return None
 
-@app.get("/getModelBy")
-async def obtener_modelo(user_id : int, project_id : int, db: Session = Depends(get_db)):
+@app.get("/permissionproject")
+async def obtener_permisos(project_id : int, db: Session = Depends(get_db)):
     return None
 
 #saber usuarios autorizados para ver modelos
