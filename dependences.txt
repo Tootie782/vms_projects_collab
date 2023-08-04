@@ -2,6 +2,7 @@ python-dotenv
 sqlalchemy
 asyncpg
 psycopg2-binary
+passlib
 python-jose[cryptography]
 fastapi
 uvicorn
