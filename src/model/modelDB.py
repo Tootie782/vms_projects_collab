@@ -15,8 +15,8 @@ class Project(Base):
 class UserProject(Base):
     __tablename__ = "user_project"
 
-    user_id = Column(Integer, ForeignKey("user.id"))
-    project_id = Column(Integer, ForeignKey("project.id"))
+    user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.id"), primary_key=True)
     user = relationship("User", back_populates="projects")
     project = relationship("Project", back_populates="users")
 

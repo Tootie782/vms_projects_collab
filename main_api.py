@@ -16,7 +16,7 @@ import json
 
 app = FastAPI()
 origins = [
-    "https://variamos2023.azurewebsites.net/"
+    "https://variamos2024.azurewebsites.net/"
 ]
 app.add_middleware(
     CORSMiddleware,

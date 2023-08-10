@@ -7,12 +7,12 @@ import os
 load_dotenv()
 #postgresql://myuser:mypassword@localhost:5432/mydatabase Azure Key Vault
 with open('credentials.json', 'r') as f:
-    credentials = json.load(f)
+    data = json.load(f)
 
-user = credentials.get("user")  # Asegúrate de agregar el campo 'user' en tu JSON
-password = credentials.get("password")
-database = credentials.get("database")
-host = credentials.get("host")
+user = data[0]['data']['user']  # Asegúrate de agregar el campo 'user' en tu JSON
+password = data[0]['data']['password']
+database = data[0]['data']['database']
+host = data[0]['data']['host']
 
 # Construye la URL de la base de datos
 DATABASE_URL = f"postgresql://{user}:{password}@{host}:5432/{database}"
