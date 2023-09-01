@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from .modelDB import User
 from .modelDB import Project
-from .modelDB import UserProject
 #import model  # Asegúrate de importar tus modelos aquí
 
 
@@ -9,52 +8,49 @@ class UserDao:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_id(self, user_id: int):
+    def get_by_id(self, user_id: str):
         return self.db.query(User).filter(User.id == user_id).first()
 
-    def get_projects(self, user_id: int):
-        return self.db.query(UserProject).filter(UserProject.user_id == user_id).all()
+    def get_projects(self, user_id: str):
+        user = self.get_by_id(user_id)
+        return user.projects if user else []
 
     def get_by_username(self, username: str):
         return self.db.query(User).filter(User.user == username).first()
 
-    def get_specific_project(self, user_id: int, project_id: int):
-        return self.db.query(UserProject).filter(
-            UserProject.user_id == user_id,
-            UserProject.project_id == project_id).first()
-
-
+    def get_specific_project(self, user_id: str, project_id: str):
+        user = self.get_by_id(user_id)
+        if user:
+            for project in user.projects:
+                if project.id == project_id:
+                    return project
+        return None
 class ProjectDao:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_id(self, project_id: int):
+    def get_by_id(self, project_id: str):
         return self.db.query(Project).filter(Project.id == project_id).first()
 
-    def create_project(self, project: Project, user_id: int, data : dict):
+    def create_project(self, project: Project, user_id: str, data: dict):
         project = Project(data=data)
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.projects.append(project)
         self.db.add(project)
-        # Crea una nueva entrada en la tabla UserProject para asociar el proyecto con el usuario
-        user_project = UserProject(user_id=user_id, project_id=project.id)
-        self.db.add(user_project)
         self.db.commit()
-        return user_project
+        return project
 
-    def share_project(self, project_id: int, to_username: str):
-        user_dao = UserDao(self.db)
-        to_user = user_dao.get_by_username(to_username)
-        if not to_user:
+    def share_project(self, project_id: str, to_username: str):
+        project = self.get_by_id(project_id)
+        user = self.db.query(User).filter(User.user == to_username).first()
+        if not user:
             raise Exception("El usuario no existe")
-        user_project = UserProject(user_id=to_user.id, project_id=project_id)
-        self.db.add(user_project)
+        if project not in user.projects:
+            user.projects.append(project)
         self.db.commit()
-        return user_project
+        return project
 
     def get_users(self, project_id: int):
-        user_projects = self.db.query(UserProject).filter(UserProject.project_id == project_id).all()
-        users = []
-        user_dao = UserDao(self.db)
-        for user_project in user_projects:
-            user = user_dao.get_by_id(user_project.user_id)
-            users.append(user)
-        return users
+        project = self.get_by_id(project_id)
+        return project.users if project else []
