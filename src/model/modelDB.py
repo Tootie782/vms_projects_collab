@@ -14,6 +14,7 @@ class Project(Base):
     id = Column(String, primary_key=True)
     project = Column(JSON)
 
+
 class User(Base):
     __tablename__ = 'user'
     __table_args__ = {'schema': 'variamos'}

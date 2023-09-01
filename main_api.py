@@ -66,7 +66,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         )
 @app.on_event("startup")
 async def iniciar_app():
-    db = Depends(get_db)
+    db =  get_db()
     global user_DAO
     global project_DAO
     user_DAO = UserDao(db)
