@@ -9,7 +9,7 @@ from starlette import status
 import src.model
 import uuid
 from fastapi import Body
-from src.db_connector import get_db
+from src.db_connector import get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -66,7 +66,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         )
 @app.on_event("startup")
 async def iniciar_app():
-    db =  get_db()
+    db =  SessionLocal()
     global user_DAO
     global project_DAO
     user_DAO = UserDao(db)

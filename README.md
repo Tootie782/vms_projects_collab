@@ -14,5 +14,5 @@ docker build --no-cache --progress plain -t vms_projects .\
 
 ### Ejecución del proyecto
 ```
-docker run --rm --name vms_projects -t vms_projects
+docker run -p 10000:10000 --rm --name vms_projects -t vms_projects
 ```

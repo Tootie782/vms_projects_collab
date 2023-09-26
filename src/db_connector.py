@@ -35,4 +35,8 @@ foreign_keys = inspector.get_foreign_keys(table_name,schema="variamos")
 for fk in foreign_keys:
         print(f"Constrained column: {fk['constrained_columns']} -> Referenced table: {fk['referred_table']} (Column: {fk['referred_columns']})")
 def get_db():
-    return SessionLocal()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
