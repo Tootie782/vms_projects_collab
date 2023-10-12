@@ -20,6 +20,10 @@ from pydantic import BaseModel
 class TokenRequest(BaseModel):
     user_id: uuid.UUID
 
+class ShareProjectInput(BaseModel):
+    user_id: str
+    project_id: str
+
 app = FastAPI()
 origins = [
     "https://variamos2024.azurewebsites.net/"
@@ -32,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 
 @app.post("/token")
@@ -72,7 +77,15 @@ async def iniciar_app():
     user_DAO = UserDao(db)
     project_DAO = ProjectDao(db)
 
-@app.post("/saveproject")
+@app.on_event("shutdown")
+def shutdown_event():
+    close_db()
+
+def close_db():
+    db = SessionLocal()  # Aquí obtienes la sesión
+    db.close()
+
+@app.post("/saveProject")
 async def guardar_modelo(project: dict, user_id: str = Depends(get_current_user)):
     return project_DAO.create_project(project,user_id)
 
@@ -80,25 +93,23 @@ async def guardar_modelo(project: dict, user_id: str = Depends(get_current_user)
 async def obtener_modelos(user_id: str = Depends(get_current_user)):
     return user_DAO.get_projects(user_id)
 
-
-#modificar
-@app.get("/getProject/{project_id}")
+@app.get("/getProject")
 async def obtener_modelo(project_id : str, user_id: str = Depends(get_current_user)):
     return project_DAO.get_by_id(project_id)
 
-@app.get("/shareproject/{project_id}/{user_id}")
-async def compartir_modelo(user_id : str, project_id : str, to_username: str = Depends(get_current_user)):
-    return project_DAO.share_project(project_id,user_id)
+@app.post("/shareProject")
+async def compartir_modelo(data: ShareProjectInput, to_username: str = Depends(get_current_user)):
+    return project_DAO.share_project(data.project_id,data.user_id)
 
-@app.get("/usersproject/{project_id}")
+@app.get("/usersProject")
 async def obtener_usuarios_proyecto(project_id : str, user_id: str = Depends(get_current_user)):
-    return project_DAO.get_users(project_id)
+    return project_DAO.get_users(project_id, user_id)
 
-@app.get("/finduser")
-async def buscar_usuario_email(project_id : str, db: Session = Depends(get_db)):
-    return None
+@app.get("/findUser")
+async def buscar_usuario_email(user_mail : str, db: Session = Depends(get_db)):
+    return user_DAO.get_by_email(user_mail)
 
-@app.get("/permissionproject")
+@app.get("/permissionProject")
 async def obtener_permisos(project_id : str, db: Session = Depends(get_db)):
     return None
 
