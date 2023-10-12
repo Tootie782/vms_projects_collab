@@ -12,7 +12,7 @@ class Project(Base):
     __tablename__ = 'project'
     __table_args__ = {'schema': 'variamos'}
 
-    id = Column(String, primary_key=True, default=str(uuid4()))
+    id = Column(String, primary_key=True)
     project = Column(JSON)
 
 

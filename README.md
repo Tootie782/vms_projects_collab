@@ -42,7 +42,7 @@ Verb | `POST`
 URL | `/saveProject`
 Authentication | `Bearer`
 Payload | ```{"project": «project data»}```
-Response | ```{ "project": «project data»}```
+Response | ```{Http response 200 OK}```
 Exception response | `Http response code 40x, body: {message:«message error»}`
 
 ---
@@ -79,7 +79,7 @@ Verb | `POST`
 URL | `/shareProject`
 Authentication | `Bearer`
 Payload | ```{ "project_id": "«project id»", "user_id": "«user id»" }```
-Response | ```{ "project": «project data»}```
+Response | ```{ Http response 200, body: {"Project shared successfully"}}```
 Exception response | `Http response code 40x, body: {message:«message error»}`
 
 ---
@@ -91,7 +91,7 @@ Parameter | Value
 Verb | `GET`
 URL | `/usersProject?project_id=«project id»`
 Authentication | `Bearer`
-Response | ```{ "users": [ { "userId": "«user id»", "permissionIds": ["«permission id1»", "«permission id2»", ...] }, ...] }```
+Response | ```{ "users": [ { "id": "«user id»", "username" : "«username»", "name": "«name»", email : "«user mail»"}, ...] }```
 Exception response | `Http response code 40x, body: {message:«message error»}`
 
 ---
@@ -103,9 +103,8 @@ Parameter | Value
 Verb | `GET`
 URL | `/findUser?user_mail=«user email»`
 Authentication | `Bearer`
-Response | ```{ "userId": "«user id»", "userName": "«user name»", "userEmail": "«user email»" }```
+Response | ```{ "id": "«user id»", "name": "«name»", "user": "«user name»", "email": "«user email»" }```
 Exception response | `Http response code 40x, body: {message:«message error»}`
 
 ---
 
-*Note: Replace placeholder values like «project id» with actual values as appropriate.*

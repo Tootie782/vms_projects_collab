@@ -1,6 +1,9 @@
+from uuid import uuid4
+
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from .modelDB import User, Project, user_project_association
+from fastapi.responses import JSONResponse
 
 
 class UserDao:
@@ -16,14 +19,11 @@ class UserDao:
         # Primero, busquemos todos los project_ids asociados al user_id
         stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
         result = self.db.execute(stmt).fetchall()
-        # Extraigamos los project_ids de los resultados
         project_ids = [row.project_id for row in result]
-        # Ahora, recuperemos los proyectos usando los project_ids
         projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
-        # Convertimos los objetos de proyectos a una lista de diccionarios (esto es opcional)
         projects_list = [project.project for project in projects]
         self.db.close()
-        return projects_list
+        return {"projects": projects_list}
 
     def get_by_username(self, username: str):
         user = self.db.query(User).filter(User.user == username).first()
@@ -57,7 +57,7 @@ class ProjectDao:
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        project = Project(project=project_data)
+        project = Project(id=str(uuid4()), project=project_data)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -65,7 +65,8 @@ class ProjectDao:
         self.db.execute(assoc)
         self.db.commit()
         self.db.close()
-        return project
+        return JSONResponse(content={"message": "Project created successfully"},
+                            status_code=200)
 
     def share_project(self, project_id: str, to_username: str):
         user = self.db.query(User).filter(User.id == to_username).first()
@@ -81,7 +82,8 @@ class ProjectDao:
             self.db.execute(assoc)
         self.db.commit()
         self.db.close()
-        return project_id
+        return JSONResponse(content={"message": "Project shared successfully"},
+                            status_code=200)
 
     def get_users(self, project_id: str, requesting_user_id: str):
         is_user_associated = self.db.query(user_project_association).filter(
@@ -99,4 +101,4 @@ class ProjectDao:
         users = self.db.query(User).filter(User.id.in_(user_ids)).all()
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
-        return users_list
+        return {"users" : users_list}
