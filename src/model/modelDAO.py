@@ -15,15 +15,28 @@ class UserDao:
         self.db.close()
         return user
 
+    # def get_projectsOld(self, user_id: str):
+    #     # Primero, busquemos todos los project_ids asociados al user_id
+    #     stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
+    #     result = self.db.execute(stmt).fetchall()
+    #     project_ids = [row.project_id for row in result]
+    #     projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
+    #     projects_list = [project.project for project in projects]
+    #     self.db.close()
+    #     return {"projects": projects_list}
+
     def get_projects(self, user_id: str):
         # Primero, busquemos todos los project_ids asociados al user_id
         stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
         result = self.db.execute(stmt).fetchall()
         project_ids = [row.project_id for row in result]
         projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
-        projects_list = [project.project for project in projects]
         self.db.close()
-        return {"projects": projects_list}
+
+        records = []
+        for project in projects:
+            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+        return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
         user = self.db.query(User).filter(User.user == username).first()
@@ -50,14 +63,23 @@ class ProjectDao:
     def get_by_id(self, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
         self.db.close()
-        return project
+        return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
 
-    def create_project(self, project_data: dict, user_id: str):
+    def get_template_projects(self):
+        projects = self.db.query(Project).filter(Project.template == True).all()
+        self.db.close()
+        records = []
+        for project in projects:
+            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+        return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
+
+    def create_project(self, project_dict: dict, user_id: str):
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        project = Project(id=str(uuid4()), project=project_data)
+        id=str(uuid4())
+        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -65,8 +87,23 @@ class ProjectDao:
         self.db.execute(assoc)
         self.db.commit()
         self.db.close()
-        return JSONResponse(content={"message": "Project created successfully"},
-                            status_code=200)
+        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
+        return JSONResponse(content=content, status_code=200)
+
+    def update_project(self, project_dict: dict, user_id: str):
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            self.db.close()
+            raise Exception("El usuario no existe")
+        
+        id=project_dict.get("id")
+        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
+        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name, "project": project.project, "template": project.template})
+     
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
+        return JSONResponse(content=content, status_code=200)
 
     def share_project(self, project_id: str, to_username: str):
         user = self.db.query(User).filter(User.id == to_username).first()

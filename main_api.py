@@ -17,6 +17,8 @@ from src.model.modelDAO import UserDao, ProjectDao
 import json
 from pydantic import BaseModel
 
+from src.model.modelDB import Project
+
 class TokenRequest(BaseModel):
     user_id: uuid.UUID
 
@@ -26,6 +28,7 @@ class ShareProjectInput(BaseModel):
 
 app = FastAPI()
 origins = [
+    "*",
     "https://variamos2024.azurewebsites.net/"
 ]
 app.add_middleware(
@@ -49,7 +52,7 @@ def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
     token_data = {"sub": str(user.id)}  # Asegúrate de convertir user.id a cadena si es necesario
     secret_key, algorithm = obtener_credenciales_token()
     token = jwt.encode(token_data, secret_key, algorithm=algorithm)
-    return {"access_token": token, "token_type": "bearer"}
+    return {"transactionId": "1", "message": "Ok", "data": { "access_token": token, "token_type": "bearer"}}
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")  # actualiza esto con la URL de tu endpoint de autenticación
@@ -86,12 +89,20 @@ def close_db():
     db.close()
 
 @app.post("/saveProject")
-async def guardar_modelo(project: dict, user_id: str = Depends(get_current_user)):
-    return project_DAO.create_project(project,user_id)
+async def guardar_modelo(project_dict: dict, user_id: str = Depends(get_current_user)):
+    if project_dict.get("id") is None: 
+        return project_DAO.create_project(project_dict,user_id)
+    else:
+        return project_DAO.update_project(project_dict,user_id)
+        
 
 @app.get("/getProjects")
 async def obtener_modelos(user_id: str = Depends(get_current_user)):
     return user_DAO.get_projects(user_id)
+
+@app.get("/getTemplateProjects")
+async def obtener_modelos_template(user_id: str = Depends(get_current_user)):
+    return project_DAO.get_template_projects()
 
 @app.get("/getProject")
 async def obtener_modelo(project_id : str, user_id: str = Depends(get_current_user)):
