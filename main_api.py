@@ -138,6 +138,13 @@ async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):
 async def obtener_permisos(project_id: str, db: Session = Depends(get_db)):
     return None
 
+@app.put("/updateProjectName")
+async def update_project_name_endpoint(project_id: str, new_name: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.update_project_name(project_id, new_name)
+
+@app.delete("/deleteProject")
+async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.delete_project(project_id)
 
 # saber usuarios autorizados para ver modelos
 def obtener_credenciales_token():

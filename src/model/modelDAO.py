@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from .modelDB import User, Project, user_project_association
@@ -14,16 +15,6 @@ class UserDao:
         user = self.db.query(User).filter(User.id == user_id).first()
         self.db.close()
         return user
-
-    # def get_projectsOld(self, user_id: str):
-    #     # Primero, busquemos todos los project_ids asociados al user_id
-    #     stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
-    #     result = self.db.execute(stmt).fetchall()
-    #     project_ids = [row.project_id for row in result]
-    #     projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
-    #     projects_list = [project.project for project in projects]
-    #     self.db.close()
-    #     return {"projects": projects_list}
 
     def get_projects(self, user_id: str):
         # Primero, busquemos todos los project_ids asociados al user_id
@@ -56,6 +47,13 @@ class UserDao:
                     return project
         return None
 
+    def delete_project(self,user_id: str, project_id: str):
+        user = self.get_by_id(user_id)
+        if user:
+            for project in user.projects:
+                if project.id == project_id:
+                    return project
+        return None
 
 class ProjectDao:
     def __init__(self, db: Session):
@@ -106,7 +104,29 @@ class ProjectDao:
 
         self.db.commit()
         self.db.close()
-        content = {"transactionId": "1", "message": "Project created successfully", "data": {"id": id}}
+        content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
+        return JSONResponse(content=content, status_code=200)
+
+    def update_project_name(self, project_id: str, new_name: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+        project.name = new_name
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project name updated successfully", "data": {"id": id}}
+        return JSONResponse(content=content, status_code=200)
+
+    def delete_project(self, project_id: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+        self.db.delete(project)
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         return JSONResponse(content=content, status_code=200)
 
     def share_project(self, project_id: str, to_username: str):
