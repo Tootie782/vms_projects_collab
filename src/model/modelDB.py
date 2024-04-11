@@ -14,6 +14,8 @@ class Project(Base):
 
     id = Column(String, primary_key=True)
     project = Column(JSON)
+    name = Column(String)
+    template = Column(Boolean)
 
 
 class User(Base):
