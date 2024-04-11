@@ -13,9 +13,10 @@ user = data[0]['data']['user']
 password = data[0]['data']['password']
 database = data[0]['data']['database']
 host = data[0]['data']['host']
+port = data[0]['data']['port']
 
 # Construye la URL de la base de datos
-DATABASE_URL = f"postgresql://{user}:{password}@{host}:5432/{database}"
+DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
