@@ -40,7 +40,9 @@ app.add_middleware(
 )
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
+@app.get("/version")
+async def getVersion():
+    return {"transactionId": "1", "message": "vms_projects 1.24.04.13.05"}
 
 @app.post("/token")
 def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
@@ -123,6 +125,14 @@ async def buscar_usuario_email(user_mail : str, db: Session = Depends(get_db)):
 @app.get("/permissionProject")
 async def obtener_permisos(project_id : str, db: Session = Depends(get_db)):
     return None
+
+@app.put("/updateProjectName")
+async def update_project_name_endpoint(project_dict: dict, user_id: str = Depends(get_current_user)):
+    return project_DAO.update_project_name(project_dict)
+
+@app.delete("/deleteProject")
+async def delete_project_endpoint(project_dict: dict, user_id: str = Depends(get_current_user)):
+    return project_DAO.delete_project(project_dict)
 
 #saber usuarios autorizados para ver modelos
 def obtener_credenciales_token():

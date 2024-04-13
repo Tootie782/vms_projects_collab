@@ -105,6 +105,27 @@ class ProjectDao:
         content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
         return JSONResponse(content=content, status_code=200)
 
+    def update_project_name(self, project_dict: dict):
+        id=project_dict.get("id")
+        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
+        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name})     
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
+        return JSONResponse(content=content, status_code=200)
+
+    def delete_project(self, project_dict: dict):
+        id=project_dict.get("id")
+        project = self.db.query(Project).filter(Project.id == id).first()
+        if not project:
+            self.db.close()
+            raise Exception("Project not found")
+        self.db.delete(project)
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
+        return JSONResponse(content=content, status_code=200)
+
     def share_project(self, project_id: str, to_username: str):
         user = self.db.query(User).filter(User.id == to_username).first()
         if not user:
