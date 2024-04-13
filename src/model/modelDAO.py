@@ -74,7 +74,6 @@ class ProjectDao:
         project = self.db.query(Project).filter(Project.id == project_id).first()
         self.db.close()
         return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
-        return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
 
     def get_template_projects(self):
         projects = self.db.query(Project).filter(Project.template == True).all()
