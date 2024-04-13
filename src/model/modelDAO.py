@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from .modelDB import User, Project, user_project_association
