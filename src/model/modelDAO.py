@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi import HTTPException
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from .modelDB import User, Project, user_project_association
@@ -48,6 +49,7 @@ class UserDao:
         user = self.db.query(User).filter(User.email == email).first()
         self.db.close()
         return user
+
     def get_specific_project(self, user_id: str, project_id: str):
         user = self.get_by_id(user_id)
         if user:
@@ -56,6 +58,13 @@ class UserDao:
                     return project
         return None
 
+    def delete_project(self,user_id: str, project_id: str):
+        user = self.get_by_id(user_id)
+        if user:
+            for project in user.projects:
+                if project.id == project_id:
+                    return project
+        return None
 
 class ProjectDao:
     def __init__(self, db: Session):
@@ -64,6 +73,7 @@ class ProjectDao:
     def get_by_id(self, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
         self.db.close()
+        return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
         return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
 
     def get_template_projects(self):
@@ -132,7 +142,7 @@ class ProjectDao:
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        #Verificar ya está compartido con el usuario
+        # Verificar ya está compartido con el usuario
         assoc_exists = self.db.execute(select(user_project_association)
                                        .where(and_(user_project_association.c.user_id == user.id,
                                                    user_project_association.c.project_id == project_id))).fetchone()
@@ -160,4 +170,4 @@ class ProjectDao:
         users = self.db.query(User).filter(User.id.in_(user_ids)).all()
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
-        return {"users" : users_list}
+        return {"users": users_list}

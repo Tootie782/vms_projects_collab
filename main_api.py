@@ -22,12 +22,15 @@ from src.model.modelDB import Project
 class TokenRequest(BaseModel):
     user_id: uuid.UUID
 
+
 class ShareProjectInput(BaseModel):
     user_id: str
     project_id: str
 
+
 app = FastAPI()
 origins = [
+    "*",
     "*",
     "https://variamos2024.azurewebsites.net/"
 ]
@@ -59,6 +62,7 @@ def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")  # actualiza esto con la URL de tu endpoint de autenticación
 
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     secret_key, algorithm = obtener_credenciales_token()
 
@@ -74,21 +78,26 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
 @app.on_event("startup")
 async def iniciar_app():
-    db =  SessionLocal()
+    db = SessionLocal()
     global user_DAO
     global project_DAO
     user_DAO = UserDao(db)
     project_DAO = ProjectDao(db)
 
+
 @app.on_event("shutdown")
 def shutdown_event():
     close_db()
 
+
 def close_db():
     db = SessionLocal()  # Aquí obtienes la sesión
     db.close()
+
 
 @app.post("/saveProject")
 async def guardar_modelo(project_dict: dict, user_id: str = Depends(get_current_user)):
@@ -107,23 +116,27 @@ async def obtener_modelos_template(user_id: str = Depends(get_current_user)):
     return project_DAO.get_template_projects()
 
 @app.get("/getProject")
-async def obtener_modelo(project_id : str, user_id: str = Depends(get_current_user)):
+async def obtener_modelo(project_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.get_by_id(project_id)
+
 
 @app.post("/shareProject")
 async def compartir_modelo(data: ShareProjectInput, to_username: str = Depends(get_current_user)):
-    return project_DAO.share_project(data.project_id,data.user_id)
+    return project_DAO.share_project(data.project_id, data.user_id)
+
 
 @app.get("/usersProject")
-async def obtener_usuarios_proyecto(project_id : str, user_id: str = Depends(get_current_user)):
+async def obtener_usuarios_proyecto(project_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.get_users(project_id, user_id)
 
+
 @app.get("/findUser")
-async def buscar_usuario_email(user_mail : str, db: Session = Depends(get_db)):
+async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):
     return user_DAO.get_by_email(user_mail)
 
+
 @app.get("/permissionProject")
-async def obtener_permisos(project_id : str, db: Session = Depends(get_db)):
+async def obtener_permisos(project_id: str, db: Session = Depends(get_db)):
     return None
 
 @app.put("/updateProjectName")
