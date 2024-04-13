@@ -47,6 +47,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 async def getVersion():
     return {"transactionId": "1", "message": "vms_projects 1.24.04.13.05"}
 
+@app.get("/testdb")
+async def testDb():
+    return project_DAO.get_template_projects()
+
 @app.post("/token")
 def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
     user_dao = UserDao(db)
