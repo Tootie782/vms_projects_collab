@@ -29,13 +29,12 @@ jobs:
 
     - name: Set Environment Variables
       run: |
-        echo "REACT_APP_NODE_ENV=${{vars.REACT_APP_NODE_ENV}}" >> .env
-        echo "REACT_APP_HOST=${{vars.REACT_APP_HOST}}" >> .env
-        echo "REACT_APP_URLBACKENDLANGUAGE=${{vars.REACT_APP_URLBACKENDLANGUAGE}}" >> .env
-        echo "REACT_APP_URLBACKENDRESTRICTION=${{vars.REACT_APP_URLBACKENDRESTRICTION}}" >> .env
-        echo "REACT_APP_URLVARIAMOSLANGUAGES=${{vars.REACT_APP_URLVARIAMOSLANGUAGES}}" >> .env
-        echo "REACT_APP_URLVARIAMOSDOCUMENTATION=${{vars.REACT_APP_URLVARIAMOSDOCUMENTATION}}" >> .env
-        echo "REACT_APP_URLVARIAMOSLANGDOCUMENTATION=${{vars.REACT_APP_URLVARIAMOSLANGDOCUMENTATION}}" >> .env
+        
+        echo "VARIAMOS_MS_LANGUAGES_DB_PASSWORD=${{vars.VARIAMOS_MS_LANGUAGES_DB_PASSWORD}}" >> .env
+        echo "VARIAMOS_MS_LANGUAGES_DB_DATABASE=${{vars.VARIAMOS_MS_LANGUAGES_DB_DATABASE}}" >> .env
+        echo "VARIAMOS_MS_LANGUAGES_DB_HOST=${{vars.VARIAMOS_MS_LANGUAGES_DB_HOST}}" >> .env
+        echo "VARIAMOS_MS_LANGUAGES_DB_PORT=${{vars.VARIAMOS_MS_LANGUAGES_DB_PORT}}" >> .env
+        echo "VARIAMOS_MS_LANGUAGES_DB_USER=${{vars.VARIAMOS_MS_LANGUAGES_DB_USER}}" >> .env
 
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
