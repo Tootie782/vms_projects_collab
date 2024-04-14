@@ -45,7 +45,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.24.04.13.05"}
+    return {"transactionId": "1", "message": "vms_projects 1.24.04.14.06"}
 
 @app.get("/testdb")
 async def testDb():
@@ -157,6 +157,6 @@ def obtener_credenciales_token():
         data = json.load(f)
 
     # Acceder a los datos del secret key y al algorithm
-    secret_key = data[1]['token']['secret_key']
-    algorithm = data[1]['token']['Algorithm']
+    secret_key = data[0]['token']['secret_key']
+    algorithm = data[0]['token']['Algorithm']
     return secret_key, algorithm
