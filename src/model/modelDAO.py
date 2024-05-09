@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from .modelDB import User, Project, user_project_association
 from fastapi.responses import JSONResponse
+from ..utils.configurationManager import manage_configurations
 
 
 class UserDao:
@@ -77,9 +78,15 @@ class ProjectDao:
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        id = str(uuid4())
-        project = Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"),
-                          template=project_dict.get("template"))
+        # Configuración inicial vacía
+        initial_configuration = {
+            "idModel": str(uuid4()),
+            "nameApplication": project_dict.get("name"),  # Tomando el nombre del proyecto como nombre de la aplicación
+            "configurations": []
+        }
+        #id = str(uuid4())
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict.get("project"),
+                          template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -87,7 +94,7 @@ class ProjectDao:
         self.db.execute(assoc)
         self.db.commit()
         self.db.close()
-        content = {"transactionId": "1", "message": "Project created successfully", "data": {"id": id}}
+        content = {"transactionId": "1", "message": "Project created successfully", "data": {"id": project.id}}
         return JSONResponse(content=content, status_code=200)
 
     def update_project(self, project_dict: dict, user_id: str):
@@ -115,7 +122,44 @@ class ProjectDao:
         project.name = new_name
         self.db.commit()
         self.db.close()
-        content = {"transactionId": "1", "message": "Project name updated successfully", "data": {"id": id}}
+        content = {"transactionId": "1", "message": "Project name updated successfully"}
+        return JSONResponse(content=content, status_code=200)
+
+    def add_configuration(self, project_id: str, project_json : dict, id_feature_model, config_name : str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+        project.configuration= manage_configurations(project_json, id_feature_model, config_name)
+        self.db.commit()
+        self.db.close()
+        content = {"transactionId": "1", "message": "Project name updated successfully"}
+        return JSONResponse(content=content, status_code=200)
+
+
+    def delete_configuration_from_project(db: Session, project_id: str, configuration_id: str):
+        # Buscar el proyecto por ID
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Asegurarse de que el proyecto tiene configuraciones
+        if not project.configuration or 'configurations' not in project.configuration:
+            raise HTTPException(status_code=404, detail="No configurations found in project")
+
+        # Filtrar la configuración que se desea eliminar
+        original_count = len(project.configuration['configurations'])
+        project.configuration['configurations'] = [
+            config for config in project.configuration['configurations'] if config['id'] != configuration_id
+        ]
+
+        # Verificar si se eliminó alguna configuración
+        if original_count == len(project.configuration['configurations']):
+            raise HTTPException(status_code=404, detail="Configuration not found")
+
+        # Guardar los cambios en la base de datos
+        db.commit()
+        content = {"transactionId": "1", "message": "Project deleted successfully"}
         return JSONResponse(content=content, status_code=200)
 
     def delete_project(self, project_id: str):
@@ -126,7 +170,7 @@ class ProjectDao:
         self.db.delete(project)
         self.db.commit()
         self.db.close()
-        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": project_id}}
         return JSONResponse(content=content, status_code=200)
 
     def share_project(self, project_id: str, to_username: str):
@@ -163,3 +207,5 @@ class ProjectDao:
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
         return {"users": users_list}
+
+

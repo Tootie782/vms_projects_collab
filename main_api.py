@@ -28,6 +28,10 @@ class ShareProjectInput(BaseModel):
     user_id: str
     project_id: str
 
+class ConfigurationInput(BaseModel):
+    project_json: dict
+    id_feature_model: str
+    config_name: str
 
 app = FastAPI()
 origins = [
@@ -145,6 +149,83 @@ async def update_project_name_endpoint(project_id: str, new_name: str, user_id: 
 @app.delete("/deleteProject")
 async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.delete_project(project_id)
+
+@app.post("/addConfiguration")
+def add_configuration(project_id: str, config_input: ConfigurationInput, db: Session = Depends(get_db)):
+    project_dao = ProjectDao(db)
+    try:
+        return project_dao.add_configuration(project_id, config_input.project_json, config_input.id_feature_model, config_input.config_name)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/deleteConfiguration")
+def delete_configuration(project_id: str, configuration_id: str, db: Session = Depends(get_db)):
+    project_dao = ProjectDao(db)
+    try:
+        return project_dao.delete_configuration_from_project(db, project_id, configuration_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/getConfiguration")
+def get_configuration(project_id: str, configuration_id: str, db: Session = Depends(get_db)):
+    project_dao = ProjectDao(db)
+    try:
+        project = project_dao.get_by_id(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Buscar la configuración específica
+        for config in project.configuration['configurations']:
+            if config['id'] == configuration_id:
+                return {"transactionId": "1", "message": "Configuration found", "data": config}
+
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/getAllConfigurations")
+def get_all_configurations(project_id: str, db: Session = Depends(get_db)):
+    project_dao = ProjectDao(db)
+    try:
+        project = project_dao.get_by_id(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Verificar si el proyecto tiene configuraciones almacenadas
+        if not project.configuration or 'configurations' not in project.configuration:
+            return {"transactionId": "1", "message": "No configurations available", "data": []}
+
+        # Retornar todas las configuraciones encontradas
+        return {"transactionId": "1", "message": "Configurations retrieved successfully", "data": project.configuration['configurations']}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/applyConfiguration")
+def apply_configuration(model_json: dict, configuration: dict, db: Session = Depends(get_db)):
+    try:
+        # Crear un diccionario de las características con sus valores configurados
+        feature_values = {feature['id']: feature['value'] for feature in configuration['features']}
+
+        # Aplicar los valores configurados a las características en el modelo JSON
+        for product_line in model_json['productLines']:
+            for model in product_line['domainEngineering']['models']:
+                for element in model['elements']:
+                    if element['id'] in feature_values:
+                        for prop in element['properties']:
+                            if prop['name'] == 'Selected':
+                                prop['value'] = feature_values[element['id']]
+
+        return {"transactionId": "1", "message": "Configuration applied successfully", "data": model_json}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # saber usuarios autorizados para ver modelos
 def obtener_credenciales_token():

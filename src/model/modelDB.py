@@ -7,7 +7,6 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = MetaData(schema="variamos")
 # Tabla de asociación
-
 class Project(Base):
     __tablename__ = 'project'
     __table_args__ = {'schema': 'variamos'}
@@ -16,6 +15,7 @@ class Project(Base):
     project = Column(JSON)
     name = Column(String)
     template = Column(Boolean)
+    configuration = Column(JSON,  nullable=True)
 
 
 class User(Base):
