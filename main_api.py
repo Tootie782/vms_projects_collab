@@ -208,12 +208,10 @@ def get_all_configurations(project_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/applyConfiguration")
-def apply_configuration(model_json: dict, configuration: dict, db: Session = Depends(get_db)):
+def apply_configuration(model_json: dict, configuration: dict):
     try:
         # Crear un diccionario de las características con sus valores configurados
         feature_values = {feature['id']: feature['value'] for feature in configuration['features']}
-
-        # Aplicar los valores configurados a las características en el modelo JSON
         for product_line in model_json['productLines']:
             for model in product_line['domainEngineering']['models']:
                 for element in model['elements']:

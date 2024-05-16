@@ -1,8 +1,11 @@
 import uuid
 import json
 import os
+from pathlib import Path
 
-def read_json_file(file_path):
+def read_json_file(filename):
+    current_dir = Path(__file__).parent.parent.parent
+    file_path = current_dir / filename
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     return data
@@ -22,7 +25,7 @@ def extract_feature_info(model_data, model_id, config_name):
                     if element['type'] in ['RootFeature', 'ConcreteFeature', 'AbstractFeature']:
                         feature = {
                             "id": element['id'],
-                            "value": "Undefined"  # Assuming we need to set this default
+                            "properties": element['properties']  # Assuming we need to set this default
                         }
                         features.append(feature)
                 configuration = {
@@ -78,14 +81,17 @@ def apply_configuration_to_model(model_json, config_json, config_id):
 
     return model_json
 # Use the function
-json_data = read_json_file('Product lines.json')
-config_json = read_json_file('configurations.json')
-model_id = "79a4f63e-3842-4db2-9824-9f6ff534094f"
-json_response = apply_configuration_to_model(json_data, config_json, "cb945915-35c3-46af-a72e-403f941f613c")
-write_json_to_file(json_response, 'model.json')
+#json_data = read_json_file('test.json')
+#config_json = read_json_file('configurations.json')
+#model_id = "a3d70a9f-05cc-4b72-a51c-c53abb7b467e"
+#json_response = apply_configuration_to_model(json_data, config_json, "cb945915-35c3-46af-a72e-403f941f613c")
+#write_json_to_file(json_response, 'model.json')
 #config_output = extract_feature_info(json_data, model_id)
 #write_json_to_file(config_output, 'configurations.json')
 #print(json.dumps(config_output, indent=4))
 
-#manage_configurations(json_data, model_id,"configuracion1")
-#manage_configurations(json_data, model_id,"configuracion2")
+#manage_configurations(json_data, model_id,"configuracion1",config_json)
+#manage_configurations(json_data, model_id,"configuracion2",config_json)
+#write_json_to_file(config_json, 'configurations.json')
+
+#print(config_json)
