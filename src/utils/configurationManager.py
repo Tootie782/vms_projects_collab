@@ -13,10 +13,10 @@ def read_json_file(filename):
 def write_json_to_file(data, filename):
     with open(filename, 'w', encoding='utf-8') as file:
         json.dump(data, file, ensure_ascii=False, indent=4)
-def extract_feature_info(model_data, model_id, config_name):
-    for product_line in model_data['productLines']:
+def extract_feature_info(data, id, config_name):
+    for product_line in data['productLines']:
         for model in product_line['domainEngineering']['models']:
-            if model['id'] == model_id:
+            if model['id'] == id:
                 configurations = []
                 config_id = str(uuid.uuid4())
                 config_name = config_name
@@ -35,7 +35,7 @@ def extract_feature_info(model_data, model_id, config_name):
                 }
                 configurations.append(configuration)
                 return {
-                    "idModel": model_id,
+                    "idModel": id,
                     "nameApplication": config_name,
                     "configurations": configurations
                 }
@@ -46,17 +46,19 @@ def add_configuration_to_json_file(configuration, data):
 
         "features": configuration['configurations'][0]['features']
     })
-    return json.dumps(data, indent=4)
+    return data
 
 
-def manage_configurations(model_data, model_id, config_name, data):
+def manage_configurations(data, id, config_name, data_file):
     # Generar la información de configuración usando la función existente
-    new_config = extract_feature_info(model_data, model_id, config_name)
-
+    new_config = extract_feature_info(data, id, config_name)
+    config_data = add_configuration_to_json_file(new_config, data_file)
+    print("manage configurations: ")
+    print(config_data)
     # Agregar la nueva configuración al archivo JSON, creando el archivo si no existe
-    return add_configuration_to_json_file(new_config, data)
+    return config_data
 
-def apply_configuration_to_model(model_json, config_json, config_id):
+def apply_configuration_to_model(project_data, config_json, config_id):
     # Encontrar la configuración especificada por config_id
     selected_config = None
     for config in config_json['configurations']:
@@ -71,7 +73,7 @@ def apply_configuration_to_model(model_json, config_json, config_id):
     feature_values = {feature['id']: feature['value'] for feature in selected_config['features']}
 
     # Aplicar los valores configurados a las características en el modelo JSON
-    for product_line in model_json['productLines']:
+    for product_line in project_data['productLines']:
         for model in product_line['domainEngineering']['models']:
             for element in model['elements']:
                 if element['id'] in feature_values:
@@ -79,7 +81,7 @@ def apply_configuration_to_model(model_json, config_json, config_id):
                         if prop['name'] == 'Selected':
                             prop['value'] = feature_values[element['id']]
 
-    return model_json
+    return project_data
 # Use the function
 #json_data = read_json_file('test.json')
 #config_json = read_json_file('configurations.json')

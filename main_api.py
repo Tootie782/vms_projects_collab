@@ -18,6 +18,15 @@ import json
 from pydantic import BaseModel
 
 from src.model.modelDB import Project
+import logging
+
+# Obtener el logger
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter("%(levelprefix)s %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class TokenRequest(BaseModel):
@@ -36,7 +45,7 @@ class ConfigurationInput(BaseModel):
 app = FastAPI()
 origins = [
     "*",
-    "https://variamos2024.azurewebsites.net/"
+    "http://localhost:10000/",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -83,6 +92,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.on_event("startup")
 async def iniciar_app():
+    print("Se está inicializando la conexión con la base de datos")
     db = SessionLocal()
     global user_DAO
     global project_DAO
@@ -101,10 +111,13 @@ def close_db():
 
 
 @app.post("/saveProject")
-async def guardar_modelo(project_dict: dict, user_id: str = Depends(get_current_user)):
-    if project_dict.get("id") is None:
-        return project_DAO.create_project(project_dict, user_id)
+async def guardar_modelo(project_dict: dict, template : bool, user_id: str = Depends(get_current_user)):
+    print("intento guardar modelo")
+    if not project_DAO.check_project_exists(user_id, project_dict):
+        print("project id is none")
+        return project_DAO.create_project(project_dict, template, user_id)
     else:
+        print("project is updated")
         return project_DAO.update_project(project_dict, user_id)
 
 
@@ -151,78 +164,33 @@ async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_cu
     return project_DAO.delete_project(project_id)
 
 @app.post("/addConfiguration")
-def add_configuration(project_id: str, config_input: ConfigurationInput, db: Session = Depends(get_db)):
-    project_dao = ProjectDao(db)
+def add_configuration(project_id: str, config_input: ConfigurationInput, user_id: str = Depends(get_current_user)):
     try:
-        return project_dao.add_configuration(project_id, config_input.project_json, config_input.id_feature_model, config_input.config_name)
+        return project_DAO.add_configuration(project_id, config_input.project_json, config_input.id_feature_model, config_input.config_name)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/deleteConfiguration")
-def delete_configuration(project_id: str, configuration_id: str, db: Session = Depends(get_db)):
-    project_dao = ProjectDao(db)
+def delete_configuration(project_id: str, configuration_id: str, user_id: str = Depends(get_current_user)):
     try:
-        return project_dao.delete_configuration_from_project(db, project_id, configuration_id)
+        return project_DAO.delete_configuration_from_project(project_id, configuration_id)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/getConfiguration")
-def get_configuration(project_id: str, configuration_id: str, db: Session = Depends(get_db)):
-    project_dao = ProjectDao(db)
-    try:
-        project = project_dao.get_by_id(project_id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        # Buscar la configuración específica
-        for config in project.configuration['configurations']:
-            if config['id'] == configuration_id:
-                return {"transactionId": "1", "message": "Configuration found", "data": config}
-
-        raise HTTPException(status_code=404, detail="Configuration not found")
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def get_configuration(project_id: str, configuration_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.get_configuration(project_id, configuration_id)
 
 @app.get("/getAllConfigurations")
-def get_all_configurations(project_id: str, db: Session = Depends(get_db)):
-    project_dao = ProjectDao(db)
-    try:
-        project = project_dao.get_by_id(project_id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        # Verificar si el proyecto tiene configuraciones almacenadas
-        if not project.configuration or 'configurations' not in project.configuration:
-            return {"transactionId": "1", "message": "No configurations available", "data": []}
-
-        # Retornar todas las configuraciones encontradas
-        return {"transactionId": "1", "message": "Configurations retrieved successfully", "data": project.configuration['configurations']}
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def get_all_configurations(project_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.get_all_configurations(project_id)
 @app.post("/applyConfiguration")
-def apply_configuration(model_json: dict, configuration: dict):
-    try:
-        # Crear un diccionario de las características con sus valores configurados
-        feature_values = {feature['id']: feature['value'] for feature in configuration['features']}
-        for product_line in model_json['productLines']:
-            for model in product_line['domainEngineering']['models']:
-                for element in model['elements']:
-                    if element['id'] in feature_values:
-                        for prop in element['properties']:
-                            if prop['name'] == 'Selected':
-                                prop['value'] = feature_values[element['id']]
-
-        return {"transactionId": "1", "message": "Configuration applied successfully", "data": model_json}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def apply_configuration(project_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.apply_configuration(project_id, configuration_id)
 
 
 # saber usuarios autorizados para ver modelos
