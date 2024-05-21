@@ -1,11 +1,14 @@
 from uuid import uuid4
 
 from fastapi import HTTPException
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import select, and_, exists, cast, String
+from sqlalchemy.sql import func
 from .modelDB import User, Project, user_project_association
 from fastapi.responses import JSONResponse
+from ..utils.configurationManager import manage_configurations
+import json
 
 
 class UserDao:
@@ -70,10 +73,74 @@ class ProjectDao:
     def __init__(self, db: Session):
         self.db = db
 
+    def check_project_exists(self, user_id: str, project_json: dict) -> bool:
+        project_json_str = json.dumps(project_json, sort_keys=True)
+        project_exists = self.db.query(exists().where(
+            and_(
+                func.cast(Project.project, String) == project_json_str,
+                user_project_association.c.user_id == user_id,
+                user_project_association.c.project_id == Project.id
+            )
+        )).scalar()
+        return project_exists
+
     def get_by_id(self, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
         self.db.close()
         return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
+
+    def get_all_configurations(self, project_id: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        try:
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            if not project.configuration or 'configurations' not in project.configuration:
+                return {"transactionId": "1", "message": "No configurations available", "data": []}
+            return {"transactionId": "1", "message": "Configurations retrieved successfully",
+                    "data": project.configuration['configurations']}
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    def get_configuration(self, project_id: str, configuration_id: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        try:
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            for config in project.configuration['configurations']:
+                if config['id'] == configuration_id:
+                    return {"transactionId": "1", "message": "Configuration found", "data": config}
+
+            raise HTTPException(status_code=404, detail="Configuration not found")
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    def apply_configuration(self, project_id, configuration_id: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        project_data = project.project
+        configurations = project.configuration.get("configurations", [])
+        configuration = next((config for config in configurations if config["id"] == configuration_id), None)
+        if not configuration:
+            raise HTTPException(status_code=404, detail="Configuration not found")
+        try:
+            feature_values = {feature['id']: feature['properties'] for feature in configuration['features']}
+
+            # Aplicar los valores de configuración a las propiedades del proyecto
+            for product_line in project_data['productLines']:
+                for model in product_line['domainEngineering']['models']:
+                    for element in model['elements']:
+                        if element['id'] in feature_values:
+                            for prop in element['properties']:
+                                    prop['properties'] = feature_values[element['id']]
+
+            return {"transactionId": "1", "message": "Configuration applied successfully", "data": project_data}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     def get_template_projects(self):
         projects = self.db.query(Project).filter(Project.template == True).all()
@@ -83,21 +150,30 @@ class ProjectDao:
             records.append({"id":  project.id, "name": project.name, "template": project.template}) 
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
-    def create_project(self, project_dict: dict, user_id: str):
+    def create_project(self, project_dict: dict, template : bool, user_id: str):
+        print("creando proyecto...")
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        id=str(uuid4())
-        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
+        # Configuración inicial vacía
+        initial_configuration = {
+            "idModel": str(uuid4()),
+            "nameApplication": project_dict.get("name"),  # Tomando el nombre del proyecto como nombre de la aplicación
+            "configurations": []
+        }
+        #id = str(uuid4())
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict,
+                          template=template, configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
         assoc = user_project_association.insert().values(user_id=user_id, project_id=project.id)
         self.db.execute(assoc)
         self.db.commit()
+        print("proyecto creado")
+        content = {"transactionId": "1", "message": "Project created successfully", "data": {"id": project.id}}
         self.db.close()
-        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
         return JSONResponse(content=content, status_code=200)
 
     def update_project(self, project_dict: dict, user_id: str):
@@ -105,14 +181,16 @@ class ProjectDao:
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        
-        id=project_dict.get("id")
-        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
-        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name, "project": project.project, "template": project.template})
-     
+
+        id = project_dict.get("id")
+        project = Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"),
+                          template=project_dict.get("template"))
+        self.db.query(Project).filter(Project.id == project.id).update(
+            {"name": project.name, "project": project.project, "template": project.template})
+
         self.db.commit()
+        content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
         self.db.close()
-        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
         return JSONResponse(content=content, status_code=200)
 
     def update_project_name(self, project_dict: dict):
@@ -121,7 +199,48 @@ class ProjectDao:
         self.db.query(Project).filter(Project.id == project.id).update({"name": project.name})     
         self.db.commit()
         self.db.close()
-        content = {"transactionId": "1", "message": "Project created successfully", "data": { "id": id}}
+        content = {"transactionId": "1", "message": "Project name updated successfully"}
+        return JSONResponse(content=content, status_code=200)
+
+    def add_configuration(self, project_id: str, project_json : dict, id_feature_model, config_name : str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+        project.configuration= manage_configurations(project_json, id_feature_model, config_name, project.configuration)
+        print("project configuration: ")
+        print(project.configuration)
+        flag_modified(project, "configuration")
+        self.db.commit()
+        content = {"transactionId": "1", "message": "Project name updated successfully"}
+        self.db.close()
+        return JSONResponse(content=content, status_code=200)
+
+
+    def delete_configuration_from_project(self, project_id: str, configuration_id: str):
+        # Buscar el proyecto por ID
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Asegurarse de que el proyecto tiene configuraciones
+        if not project.configuration or 'configurations' not in project.configuration:
+            raise HTTPException(status_code=404, detail="No configurations found in project")
+
+        # Filtrar la configuración que se desea eliminar
+        original_count = len(project.configuration['configurations'])
+        project.configuration['configurations'] = [
+            config for config in project.configuration['configurations'] if config['id'] != configuration_id
+        ]
+
+        # Verificar si se eliminó alguna configuración
+        if original_count == len(project.configuration['configurations']):
+            raise HTTPException(status_code=404, detail="Configuration not found")
+
+        # Guardar los cambios en la base de datos
+        flag_modified(project, "configuration")
+        self.db.commit()
+        content = {"transactionId": "1", "message": "Project deleted successfully"}
         return JSONResponse(content=content, status_code=200)
 
     def delete_project(self, project_dict: dict):
@@ -132,8 +251,8 @@ class ProjectDao:
             raise Exception("Project not found")
         self.db.delete(project)
         self.db.commit()
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": project_id}}
         self.db.close()
-        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         return JSONResponse(content=content, status_code=200)
 
     def share_project(self, project_id: str, to_username: str):
@@ -170,3 +289,5 @@ class ProjectDao:
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
         return {"users": users_list}
+
+
