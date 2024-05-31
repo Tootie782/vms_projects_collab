@@ -96,15 +96,24 @@ This document outlines the available endpoints and their usage for the project's
 - **Method**: DELETE
 - **Description**: Deletes a configuration from a project.
 - **Headers**: `Authorization: Bearer <token>`
-- **Request Body**: `{"project_id": "uuid", "configuration_id": "uuid"}`
+- **Request Body**: `{"project_id": "uuid", "model_id": "uuid", "configuration_id": "uuid"}`
 - **Response**: `{"transactionId": "1", "message": "Configuration deleted successfully"}`
+- **Errors**: 404 (Configuration or project not found), 500 (Internal server error)
+
+### Get Configuration
+- **Endpoint**: `/getAllConfigurations`
+- **Method**: GET
+- **Description**: Retrieves a specific configuration by ID from a project.
+- **Query Parameters**: `project_id`: `uuid`,`model_id`: `uuid`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**: `{"transactionId": "1", "message": "Configuration retrieved successfully", "data": {}}`
 - **Errors**: 404 (Configuration or project not found), 500 (Internal server error)
 
 ### Get Configuration
 - **Endpoint**: `/getConfiguration`
 - **Method**: GET
 - **Description**: Retrieves a specific configuration by ID from a project.
-- **Query Parameters**: `project_id`, `configuration_id`
+- **Query Parameters**: `project_id`: `uuid`,`configuration_id`: `uuid`
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**: `{"transactionId": "1", "message": "Configuration retrieved successfully", "data": {}}`
 - **Errors**: 404 (Configuration or project not found), 500 (Internal server error)
