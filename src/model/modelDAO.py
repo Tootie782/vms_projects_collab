@@ -20,6 +20,16 @@ class UserDao:
         self.db.close()
         return user
 
+    # def get_projectsOld(self, user_id: str):
+    #     # Primero, busquemos todos los project_ids asociados al user_id
+    #     stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
+    #     result = self.db.execute(stmt).fetchall()
+    #     project_ids = [row.project_id for row in result]
+    #     projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
+    #     projects_list = [project.project for project in projects]
+    #     self.db.close()
+    #     return {"projects": projects_list}
+
     def get_projects(self, user_id: str):
         # Primero, busquemos todos los project_ids asociados al user_id
         stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
@@ -30,8 +40,8 @@ class UserDao:
 
         records = []
         for project in projects:
-            records.append({"id": project.id, "name": project.name, "template": project.template})
-        return {"transactionId": "1", "message": "Ok", "data": {"projects": records}}
+            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+        return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
         user = self.db.query(User).filter(User.user == username).first()
@@ -198,8 +208,8 @@ class ProjectDao:
         self.db.close()
         records = []
         for project in projects:
-            records.append({"id": project.id, "name": project.name, "template": project.template})
-        return {"transactionId": "1", "message": "Ok", "data": {"projects": records}}
+            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+        return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     """
     def create_project(self, project_dict: dict, template : bool, user_id: str):
@@ -268,12 +278,10 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def update_project_name(self, project_id: str, new_name: str):
-        project = self.db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            self.db.close()
-            raise HTTPException(status_code=404, detail="Project not found")
-        project.name = new_name
+    def update_project_name(self, project_dict: dict):
+        id=project_dict.get("id")
+        project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
+        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name})     
         self.db.commit()
         self.db.close()
         content = {"transactionId": "1", "message": "Project name updated successfully"}
@@ -344,11 +352,12 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def delete_project(self, project_id: str):
-        project = self.db.query(Project).filter(Project.id == project_id).first()
+    def delete_project(self, project_dict: dict):
+        id=project_dict.get("id")
+        project = self.db.query(Project).filter(Project.id == id).first()
         if not project:
             self.db.close()
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise Exception("Project not found")
         self.db.delete(project)
         self.db.commit()
         content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": project_id}}

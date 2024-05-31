@@ -28,7 +28,6 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-
 class TokenRequest(BaseModel):
     user_id: uuid.UUID
 
@@ -45,7 +44,7 @@ class ConfigurationInput(BaseModel):
 app = FastAPI()
 origins = [
     "*",
-    "http://localhost:10000/",
+    "https://app.variamos.com/"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +55,13 @@ app.add_middleware(
 )
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+@app.get("/version")
+async def getVersion():
+    return {"transactionId": "1", "message": "vms_projects 1.24.04.14.16"}
+
+@app.get("/testdb")
+async def testDb():
+    return project_DAO.get_template_projects()
 
 @app.post("/token")
 def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
@@ -67,7 +73,7 @@ def generate_token(request: TokenRequest, db: Session = Depends(get_db)):
     token_data = {"sub": str(user.id)}  # Asegúrate de convertir user.id a cadena si es necesario
     secret_key, algorithm = obtener_credenciales_token()
     token = jwt.encode(token_data, secret_key, algorithm=algorithm)
-    return {"transactionId": "1", "message": "Ok", "data": {"access_token": token, "token_type": "bearer"}}
+    return {"transactionId": "1", "message": "Ok", "data": { "access_token": token, "token_type": "bearer"}}
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")  # actualiza esto con la URL de tu endpoint de autenticación
@@ -125,11 +131,9 @@ async def guardar_modelo(project_dict: dict, template : bool, user_id: str = Dep
 async def obtener_modelos(user_id: str = Depends(get_current_user)):
     return user_DAO.get_projects(user_id)
 
-
 @app.get("/getTemplateProjects")
 async def obtener_modelos_template(user_id: str = Depends(get_current_user)):
     return project_DAO.get_template_projects()
-
 
 @app.get("/getProject")
 async def obtener_modelo(project_id: str, user_id: str = Depends(get_current_user)):
@@ -156,12 +160,12 @@ async def obtener_permisos(project_id: str, db: Session = Depends(get_db)):
     return None
 
 @app.put("/updateProjectName")
-async def update_project_name_endpoint(project_id: str, new_name: str, user_id: str = Depends(get_current_user)):
-    return project_DAO.update_project_name(project_id, new_name)
+async def update_project_name_endpoint(project_dict: dict, user_id: str = Depends(get_current_user)):
+    return project_DAO.update_project_name(project_dict)
 
 @app.delete("/deleteProject")
-async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
-    return project_DAO.delete_project(project_id)
+async def delete_project_endpoint(project_dict: dict, user_id: str = Depends(get_current_user)):
+    return project_DAO.delete_project(project_dict)
 
 @app.post("/addConfiguration")
 def add_configuration(project_id: str, config_input: ConfigurationInput, user_id: str = Depends(get_current_user)):
@@ -194,12 +198,12 @@ def apply_configuration(project_id : str, model_id : str, configuration_id: str,
     return project_DAO.apply_configuration(project_id, model_id, configuration_id)
 
 
-# saber usuarios autorizados para ver modelos
+
 def obtener_credenciales_token():
     with open('credentials.json', 'r') as f:
         data = json.load(f)
 
     # Acceder a los datos del secret key y al algorithm
-    secret_key = data[1]['token']['secret_key']
-    algorithm = data[1]['token']['Algorithm']
+    secret_key = data[0]['token']['secret_key']
+    algorithm = data[0]['token']['Algorithm']
     return secret_key, algorithm
