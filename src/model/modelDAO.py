@@ -73,6 +73,12 @@ class ProjectDao:
     def __init__(self, db: Session):
         self.db = db
 
+    def check_project_exists_by_id(self, user_id: str, project_id: str) -> bool: 
+        project_exists = self.db.query(exists().where(
+            Project.id == project_id
+        )).scalar()
+        return project_exists
+
     def check_project_exists(self, user_id: str, project_json: dict) -> bool:
         project_json_str = json.dumps(project_json, sort_keys=True)
         project_exists = self.db.query(exists().where(
@@ -150,7 +156,7 @@ class ProjectDao:
             records.append({"id":  project.id, "name": project.name, "template": project.template}) 
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
-    def create_project(self, project_dict: dict, template : bool, user_id: str):
+    def create_project(self, project_dict: dict, user_id: str):
         print("creando proyecto...")
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -163,8 +169,8 @@ class ProjectDao:
             "configurations": []
         }
         #id = str(uuid4())
-        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict,
-                          template=template, configuration=initial_configuration)
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict.get("project"),
+                          template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación

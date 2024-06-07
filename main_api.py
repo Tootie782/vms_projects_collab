@@ -117,11 +117,13 @@ def close_db():
 
 
 @app.post("/saveProject")
-async def guardar_modelo(project_dict: dict, template : bool, user_id: str = Depends(get_current_user)):
+async def guardar_modelo(project_dict: dict, user_id: str = Depends(get_current_user)):
+    template=False
     print("intento guardar modelo")
-    if not project_DAO.check_project_exists(user_id, project_dict):
+    project_id=project_dict['id']
+    if project_id == None:
         print("project id is none")
-        return project_DAO.create_project(project_dict, template, user_id)
+        return project_DAO.create_project(project_dict, user_id)
     else:
         print("project is updated")
         return project_DAO.update_project(project_dict, user_id)
