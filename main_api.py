@@ -179,9 +179,9 @@ def add_configuration(project_id: str, config_input: ConfigurationInput, user_id
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/deleteConfiguration")
-def delete_configuration(project_id: str, configuration_id: str, user_id: str = Depends(get_current_user)):
+def delete_configuration(project_id: str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
     try:
-        return project_DAO.delete_configuration_from_project(project_id, configuration_id)
+        return project_DAO.delete_configuration_from_project(project_id, model_id, configuration_id)
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -192,11 +192,12 @@ def get_configuration(project_id: str, configuration_id: str, user_id: str = Dep
     return project_DAO.get_configuration(project_id, configuration_id)
 
 @app.get("/getAllConfigurations")
-def get_all_configurations(project_id: str, user_id: str = Depends(get_current_user)):
-    return project_DAO.get_all_configurations(project_id)
+def get_model_configurations(project_id: str, model_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.get_model_configurations(project_id, model_id)
+
 @app.post("/applyConfiguration")
-def apply_configuration(project_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
-    return project_DAO.apply_configuration(project_id, configuration_id)
+def apply_configuration(project_id : str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
+    return project_DAO.apply_configuration(project_id, model_id, configuration_id)
 
 
 

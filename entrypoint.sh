@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# Comprueba si la variable RUN_TESTS está configurada a "true"
+# Este script comprueba si la variable de entorno RUN_TESTS está establecida a "true".
+# Si es así, ejecuta las pruebas; de lo contrario, inicia la aplicación.
+
 if [ "$RUN_TESTS" = "true" ]; then
     echo "Running Tests..."
-    # Comando para ejecutar pruebas, ajusta según sea necesario
-    cd /service
-    pytest src/test/test_api.py
+    pytest /service/src/test/
 else
-    echo "Running Application..."
-    # Inicia la aplicación, pasa todos los argumentos a Uvicorn
-    exec "$@"
+    echo "Starting Application..."
+    uvicorn main_api:app --host 0.0.0.0 --port 10000
 fi
