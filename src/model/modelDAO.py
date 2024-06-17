@@ -246,7 +246,7 @@ class ProjectDao:
     """
 
 
-    def create_project(self, project_dict: dict, template: bool, user_id: str):
+    def create_project(self, project_dict: dict, user_id: str):
         print("creando proyecto...")
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -254,8 +254,8 @@ class ProjectDao:
             raise Exception("El usuario no existe")
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
-        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict,
-                          template=template, configuration=initial_configuration)
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict.get("project"),
+                          template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
