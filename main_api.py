@@ -57,7 +57,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.24.06.17.16"}
+    return {"transactionId": "1", "message": "vms_projects 1.24.06.17.20"}
 
 @app.get("/testdb")
 async def testDb():
