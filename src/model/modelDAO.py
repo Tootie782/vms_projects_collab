@@ -7,6 +7,7 @@ from sqlalchemy import select, and_, exists, cast, String
 from sqlalchemy.sql import func
 from .modelDB import User, Project, user_project_association
 from fastapi.responses import JSONResponse
+from datetime import datetime
 from ..utils.configurationManager import manage_configurations
 import json
 
@@ -240,7 +241,7 @@ class ProjectDao:
     """
 
 
-    def create_project(self, project_dict: dict, template: bool, user_id: str):
+    def create_project(self, project_dict: dict, name : str, template: bool, description: str, source: str,  author: str, user_id: str):
         print("creando proyecto...")
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -248,8 +249,8 @@ class ProjectDao:
             raise Exception("El usuario no existe")
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
-        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict,
-                          template=template, configuration=initial_configuration)
+        project = Project(id=str(uuid4()), name=name, project=project_dict,
+                          template=template, configuration=initial_configuration,description=description, source=source, author=author, date= datetime.now())
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -261,18 +262,22 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def update_project(self, project_dict: dict, user_id: str):
+    def update_project(self, project_dict: dict, name : str, template: bool, description: str, source: str,  author: str, user_id: str):
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-
-        id = project_dict.get("id")
-        project = Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"),
-                          template=project_dict.get("template"))
-        self.db.query(Project).filter(Project.id == project.id).update(
-            {"name": project.name, "project": project.project, "template": project.template})
-
+        current_date = datetime.now()
+        project = self.db.query(Project).filter(Project.project == project_dict).first()
+        if not project:
+            self.db.close()
+            raise Exception("El proyecto no existe")
+        project.name = name
+        project.template = template
+        project.description = description
+        project.source = source
+        project.author = author
+        project.date = current_date
         self.db.commit()
         content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
         self.db.close()

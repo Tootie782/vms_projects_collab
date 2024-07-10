@@ -117,14 +117,14 @@ def close_db():
 
 
 @app.post("/saveProject")
-async def guardar_modelo(project_dict: dict, template : bool, user_id: str = Depends(get_current_user)):
+async def guardar_modelo(project_dict: dict, name : str, template: bool, description: str, source: str,  author: str,  user_id: str = Depends(get_current_user)):
     print("intento guardar modelo")
     if not project_DAO.check_project_exists(user_id, project_dict):
         print("project id is none")
-        return project_DAO.create_project(project_dict, template, user_id)
+        return project_DAO.create_project(project_dict, name, template, description, source, author)
     else:
         print("project is updated")
-        return project_DAO.update_project(project_dict, user_id)
+        return project_DAO.update_project(project_dict, name, template, description, source, author)
 
 
 @app.get("/getProjects")
@@ -204,6 +204,6 @@ def obtener_credenciales_token():
         data = json.load(f)
 
     # Acceder a los datos del secret key y al algorithm
-    secret_key = data[0]['token']['secret_key']
-    algorithm = data[0]['token']['Algorithm']
+    secret_key = data[1]['token']['secret_key']
+    algorithm = data[1]['token']['Algorithm']
     return secret_key, algorithm
