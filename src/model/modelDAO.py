@@ -144,7 +144,7 @@ class ProjectDao:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     """
-
+    """
     def apply_configuration(self, project_id, model_id, configuration_id: str):
         # Recuperar el proyecto
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -159,11 +159,9 @@ class ProjectDao:
 
         try:
             # Construir un diccionario de los valores de las características configuradas
-            feature_values = {}
-            for feature in configuration['features']:
-                for prop in feature.get('properties', []):
-                    if 'id' in prop and 'value' in prop:
-                        feature_values[prop['id']] = prop['value']
+            feature_values = {feature['id']: feature['value'] for feature in configuration['features']}
+            relationship_values = {rel['id']: {prop['id']: prop['value'] for prop in rel['properties']} for rel in
+                                   configuration.get('relationships', [])}
 
             # Aplicar la configuración a las características del modelo especificado
             for product_line in project.project['productLines']:
@@ -173,6 +171,51 @@ class ProjectDao:
                             for prop in element.get('properties', []):
                                 if prop['id'] in feature_values:
                                     prop['value'] = feature_values[prop['id']]
+                        for relation in model.get('relationships', []):
+                            if relation['id'] in relationship_values:
+                                for prop in relation['properties']:
+                                    prop['value'] = relationship_values[relation['id']]
+            # Devolver el proyecto modificado como JSON sin modificar la base de datos
+            return {"transactionId": "1", "message": "Configuration applied successfully", "data": project.project}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    """
+    def apply_configuration(self, project_id, model_id, configuration_id: str):
+        # Recuperar el proyecto
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Verificar y extraer las configuraciones del modelo especificado
+        model_configurations = project.configuration.get('modelConfigurations', {}).get(model_id, [])
+        configuration = next((config for config in model_configurations if config['id'] == configuration_id), None)
+        if not configuration:
+            raise HTTPException(status_code=404, detail="Configuration not found")
+
+        try:
+            # Construir un diccionario de los valores de las características configuradas
+            feature_values = {feature['id']: feature.get('value', 'Undefined') for feature in configuration['features']}
+            relationship_values = {
+                rel['id']: {prop['id']: prop.get('value', 'Undefined') for prop in rel.get('properties', [])}
+                for rel in configuration.get('relationships', [])
+            }
+
+            # Aplicar la configuración a las características del modelo especificado
+            for product_line in project.project['productLines']:
+                for model in product_line['domainEngineering']['models']:
+                    if model['id'] == model_id:
+                        # Aplicar valores a las características
+                        for element in model['elements']:
+                            if element['id'] in feature_values:
+                                for prop in element.get('properties', []):
+                                    if prop['id'] in feature_values:
+                                        prop['value'] = feature_values[element['id']]
+                        # Aplicar valores a las relaciones
+                        for relation in model.get('relationships', []):
+                            if relation['id'] in relationship_values:
+                                for prop in relation['properties']:
+                                    if prop['id'] in relationship_values[relation['id']]:
+                                        prop['value'] = relationship_values[relation['id']][prop['id']]
 
             # Devolver el proyecto modificado como JSON sin modificar la base de datos
             return {"transactionId": "1", "message": "Configuration applied successfully", "data": project.project}
@@ -365,7 +408,7 @@ class ProjectDao:
             raise Exception("Project not found")
         self.db.delete(project)
         self.db.commit()
-        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": project_id}}
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 

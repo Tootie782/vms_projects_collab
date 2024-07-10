@@ -121,10 +121,10 @@ async def guardar_modelo(project_dict: dict, name : str, template: bool, descrip
     print("intento guardar modelo")
     if not project_DAO.check_project_exists(user_id, project_dict):
         print("project id is none")
-        return project_DAO.create_project(project_dict, name, template, description, source, author)
+        return project_DAO.create_project(project_dict, name, template, description, source, author, user_id)
     else:
         print("project is updated")
-        return project_DAO.update_project(project_dict, name, template, description, source, author)
+        return project_DAO.update_project(project_dict, name, template, description, source, author, user_id)
 
 
 @app.get("/getProjects")

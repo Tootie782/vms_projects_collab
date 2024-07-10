@@ -43,6 +43,7 @@ def extract_feature_info(data, id, config_name):
                 }
             
 """
+"""
 def extract_feature_info(data, id, config_name):
     for product_line in data['productLines']:
         for model in product_line['domainEngineering']['models']:
@@ -68,6 +69,51 @@ def extract_feature_info(data, id, config_name):
                     "nameApplication": config_name,
                     "configurations": configurations
                 }
+            
+"""
+
+
+def extract_feature_info(data, model_id, config_name):
+    for product_line in data['productLines']:
+        for model in product_line['domainEngineering']['models']:
+            if model['id'] == model_id:
+                configurations = []
+                config_id = str(uuid.uuid4())
+                features = []
+                relationships = []
+
+                # Extract features
+                for element in model['elements']:
+                    if element['type'] in ['RootFeature', 'ConcreteFeature', 'AbstractFeature']:
+                        feature = {
+                            "id": element['id'],
+                            "properties": element['properties']
+                        }
+                        features.append(feature)
+
+                # Extract relationships
+                for relationship in model.get('relationships', []):
+                    relation = {
+                        "id": relationship['id'],
+                        "properties": relationship['properties']
+                    }
+                    relationships.append(relation)
+
+                configuration = {
+                    "id": config_id,
+                    "name": config_name,
+                    "features": features,
+                    "relationships": relationships
+                }
+                configurations.append(configuration)
+
+                return {
+                    "idModel": model_id,
+                    "nameApplication": config_name,
+                    "configurations": configurations
+                }
+
+
 def add_configuration_to_json_file(configuration, data):
     data['configurations'].append({
         "id": str(uuid.uuid4()),
