@@ -40,6 +40,11 @@ class ConfigurationInput(BaseModel):
     project_json: dict
     id_feature_model: str
     config_name: str
+    id: str
+
+class ConfigurationInput2(BaseModel): 
+    id_feature_model: str 
+    id: str
 
 app = FastAPI()
 origins = [
@@ -57,7 +62,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.24.06.17.20"}
+    return {"transactionId": "1", "message": "vms_projects 1.24.07.11.07"}
 
 @app.get("/testdb")
 async def testDb():
@@ -195,9 +200,13 @@ def get_configuration(project_id: str, configuration_id: str, user_id: str = Dep
 def get_model_configurations(project_id: str, model_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.get_model_configurations(project_id, model_id)
 
-@app.post("/applyConfiguration")
-def apply_configuration(project_id : str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
+@app.post("/applyConfiguration2")
+def apply_configuration2(project_id : str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.apply_configuration(project_id, model_id, configuration_id)
+
+@app.post("/applyConfiguration")
+def apply_configuration(project_id : str, config_input: ConfigurationInput2, user_id: str = Depends(get_current_user)):
+    return project_DAO.apply_configuration(project_id, config_input.id_feature_model, config_input.id)
 
 
 

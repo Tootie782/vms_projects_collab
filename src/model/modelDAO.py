@@ -3,8 +3,9 @@ from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import select, and_, exists, cast, String
+from sqlalchemy import DateTime, select, and_, exists, cast, String
 from sqlalchemy.sql import func
+from datetime import datetime
 from .modelDB import User, Project, user_project_association
 from fastapi.responses import JSONResponse
 from ..utils.configurationManager import manage_configurations
@@ -40,7 +41,7 @@ class UserDao:
 
         records = []
         for project in projects:
-            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+            records.append({"id":  project.id, "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date}) 
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
@@ -214,7 +215,7 @@ class ProjectDao:
         self.db.close()
         records = []
         for project in projects:
-            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+            records.append({"id":  project.id, "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date}) 
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     """
@@ -254,7 +255,7 @@ class ProjectDao:
             raise Exception("El usuario no existe")
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
-        project = Project(id=str(uuid4()), name=project_dict.get("name"), project=project_dict.get("project"),
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
                           template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
@@ -274,10 +275,10 @@ class ProjectDao:
             raise Exception("El usuario no existe")
 
         id = project_dict.get("id")
-        project = Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"),
+        project = Project(id=id, name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
                           template=project_dict.get("template"))
         self.db.query(Project).filter(Project.id == project.id).update(
-            {"name": project.name, "project": project.project, "template": project.template})
+            {"name": project.name, "project": project.project, "template": project.template, "description": project.description, "author":project.author, "source":project.source,"date":project.date})
 
         self.db.commit()
         content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
@@ -366,7 +367,7 @@ class ProjectDao:
             raise Exception("Project not found")
         self.db.delete(project)
         self.db.commit()
-        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": project_id}}
+        content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
