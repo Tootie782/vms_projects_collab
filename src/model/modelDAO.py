@@ -283,6 +283,20 @@ class ProjectDao:
         return JSONResponse(content=content, status_code=200)
     """
 
+    def get_model_types(self, data):
+        tipos = set()  # Usamos un conjunto para evitar duplicados
+        for product_line in data.get("productLines", []):
+            domain_engineering = product_line.get("domainEngineering", {})
+            for model in domain_engineering.get("models", []):
+                tipos.add(model.get("type", ""))
+            application_engineering = product_line.get("applicationEngineering", {})
+            for model in application_engineering.get("models", []):
+                tipos.add(model.get("type", ""))
+        return list(tipos)
+
+    # Función para convertir la lista de tipos de modelos a una cadena separada por comas
+    def model_types_str(self, tipos_modelos):
+        return ', '.join(tipos_modelos)
 
     def create_project(self, project_dict: dict, name : str, template: bool, description: str, source: str,  author: str, user_id: str):
         print("creando proyecto...")
@@ -293,7 +307,8 @@ class ProjectDao:
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
         project = Project(id=str(uuid4()), name=name, project=project_dict,
-                          template=template, configuration=initial_configuration,description=description, source=source, author=author, date= datetime.now())
+                          template=template, configuration=initial_configuration,description=description, source=source, author=author, date= datetime.now(),
+                          type_models=self.model_types_str(self.get_model_types(project_dict)))
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -321,6 +336,7 @@ class ProjectDao:
         project.source = source
         project.author = author
         project.date = current_date
+        project.type_models = self.model_types_str(self.get_model_types(project_dict))
         self.db.commit()
         content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
         self.db.close()

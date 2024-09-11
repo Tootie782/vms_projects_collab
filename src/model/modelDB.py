@@ -21,6 +21,7 @@ class Project(Base):
     source = Column(String,  nullable=True)
     author = Column(String,  nullable=True)
     date = Column(DateTime,  nullable=True)
+    type_models = Column(String, nullable=True)
 
 
 class User(Base):
