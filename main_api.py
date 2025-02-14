@@ -42,6 +42,7 @@ class ConfigurationInput(BaseModel):
     config_name: str
     id: str
 
+
 class ConfigurationInput2(BaseModel):
     id_feature_model: str
     id: str
@@ -215,6 +216,6 @@ def obtener_credenciales_token():
         data = json.load(f)
 
     # Acceder a los datos del secret key y al algorithm
-    secret_key = data[1]['token']['secret_key']
-    algorithm = data[1]['token']['Algorithm']
+    secret_key = data[0]['token']['secret_key']
+    algorithm = data[0]['token']['Algorithm']
     return secret_key, algorithm
