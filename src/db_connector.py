@@ -12,11 +12,11 @@ load_dotenv()
 with open('credentials.json', 'r') as f:
     data = json.load(f)
 
-user = data[0]['data']['user']
-password = data[0]['data']['password']
-database = data[0]['data']['database']
-host = data[0]['data']['host']
-port = data[0]['data']['port']
+user = os.getenv('VARIAMOS_MS_LANGUAGES_DB_USER', '')
+password = os.getenv('VARIAMOS_MS_LANGUAGES_DB_PASSWORD', '')
+database = os.getenv('VARIAMOS_MS_LANGUAGES_DB_DATABASE', '')
+host = os.getenv('VARIAMOS_MS_LANGUAGES_DB_HOST', '')
+port = os.getenv('VARIAMOS_MS_LANGUAGES_DB_PORT', '')
 
 # Construye la URL de la base de datos
 DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{database}"
