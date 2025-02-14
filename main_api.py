@@ -40,6 +40,11 @@ class ConfigurationInput(BaseModel):
     project_json: dict
     id_feature_model: str
     config_name: str
+    id: str
+
+class ConfigurationInput2(BaseModel):
+    id_feature_model: str
+    id: str
 
 app = FastAPI()
 origins = [
@@ -57,7 +62,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.24.04.14.16"}
+    return {"transactionId": "1", "message": "vms_projects 1.25.2.14.14"}
 
 @app.get("/testdb")
 async def testDb():
@@ -117,14 +122,16 @@ def close_db():
 
 
 @app.post("/saveProject")
-async def guardar_modelo(project_dict: dict, name : str, template: bool, description: str, source: str,  author: str,  user_id: str = Depends(get_current_user)):
+async def guardar_modelo(project_dict: dict, user_id: str = Depends(get_current_user)):
+    template=False
     print("intento guardar modelo")
-    if not project_DAO.check_project_exists(user_id, project_dict):
+    project_id=project_dict['id']
+    if project_id == None:
         print("project id is none")
-        return project_DAO.create_project(project_dict, name, template, description, source, author, user_id)
+        return project_DAO.create_project(project_dict, user_id)
     else:
         print("project is updated")
-        return project_DAO.update_project(project_dict, name, template, description, source, author, user_id)
+        return project_DAO.update_project(project_dict, user_id)
 
 
 @app.get("/getProjects")
@@ -193,9 +200,13 @@ def get_configuration(project_id: str, configuration_id: str, user_id: str = Dep
 def get_model_configurations(project_id: str, model_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.get_model_configurations(project_id, model_id)
 
-@app.post("/applyConfiguration")
-def apply_configuration(project_id : str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
+@app.post("/applyConfiguration2")
+def apply_configuration2(project_id : str, model_id : str, configuration_id: str, user_id: str = Depends(get_current_user)):
     return project_DAO.apply_configuration(project_id, model_id, configuration_id)
+
+@app.post("/applyConfiguration")
+def apply_configuration(project_id : str, config_input: ConfigurationInput2, user_id: str = Depends(get_current_user)):
+    return project_DAO.apply_configuration(project_id, config_input.id_feature_model, config_input.id)
 
 
 

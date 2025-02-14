@@ -73,46 +73,53 @@ def extract_feature_info(data, id, config_name):
 """
 
 
-def extract_feature_info(data, model_id, config_name):
+def extract_model_info(data, model_id, config_name):
     for product_line in data['productLines']:
-        for model in product_line['domainEngineering']['models']:
-            if model['id'] == model_id:
-                configurations = []
-                config_id = str(uuid.uuid4())
-                features = []
-                relationships = []
+        # Define the model categories to search
+        model_categories = ['scope', 'domainEngineering', 'applicationEngineering']
 
-                # Extract features
-                for element in model['elements']:
-                    if element['type'] in ['RootFeature', 'ConcreteFeature', 'AbstractFeature']:
+        for category in model_categories:
+            models = product_line.get(category, {}).get('models', [])
+
+            for model in models:
+                if model['id'] == model_id:
+                    configurations = []
+                    config_id = str(uuid.uuid4())
+                    features = []
+                    relationships = []
+
+                    # Extract features
+                    for element in model.get('elements', []):
                         feature = {
                             "id": element['id'],
-                            "properties": element['properties']
+                            "type": element['type'],
+                            "name": element['name'],
+                            "properties": element.get('properties', [])
                         }
                         features.append(feature)
 
-                # Extract relationships
-                for relationship in model.get('relationships', []):
-                    relation = {
-                        "id": relationship['id'],
-                        "properties": relationship['properties']
+                    # Extract relationships
+                    for relationship in model.get('relationships', []):
+                        relation = {
+                            "id": relationship['id'],
+                            "type": relationship['type'],
+                            "properties": relationship.get('properties', [])
+                        }
+                        relationships.append(relation)
+
+                    configuration = {
+                        "id": config_id,
+                        "name": config_name,
+                        "features": features,
+                        "relationships": relationships
                     }
-                    relationships.append(relation)
+                    configurations.append(configuration)
 
-                configuration = {
-                    "id": config_id,
-                    "name": config_name,
-                    "features": features,
-                    "relationships": relationships
-                }
-                configurations.append(configuration)
-
-                return {
-                    "idModel": model_id,
-                    "nameApplication": config_name,
-                    "configurations": configurations
-                }
-
+                    return {
+                        "idModel": model_id,
+                        "nameApplication": config_name,
+                        "configurations": configurations
+                    }
 
 def add_configuration_to_json_file(configuration, data):
     data['configurations'].append({
@@ -134,7 +141,7 @@ def manage_configurations(data, id, config_name, data_file):
     return config_data
 """
 def manage_configurations(data, id, config_name, project_configuration):
-    new_config = extract_feature_info(data, id, config_name)
+    new_config = extract_model_info(data, id, config_name)
     if 'modelConfigurations' not in project_configuration:
         project_configuration['modelConfigurations'] = {}
     if id not in project_configuration['modelConfigurations']:

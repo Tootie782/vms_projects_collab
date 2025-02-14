@@ -3,11 +3,11 @@ from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import select, and_, exists, cast, String
+from sqlalchemy import DateTime, select, and_, exists, cast, String
 from sqlalchemy.sql import func
+from datetime import datetime
 from .modelDB import User, Project, user_project_association
 from fastapi.responses import JSONResponse
-from datetime import datetime
 from ..utils.configurationManager import manage_configurations
 import json
 
@@ -41,7 +41,7 @@ class UserDao:
 
         records = []
         for project in projects:
-            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+            records.append({"id":  project.id, "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date})
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
@@ -73,6 +73,12 @@ class UserDao:
 class ProjectDao:
     def __init__(self, db: Session):
         self.db = db
+
+    def check_project_exists_by_id(self, user_id: str, project_id: str) -> bool:
+        project_exists = self.db.query(exists().where(
+            Project.id == project_id
+        )).scalar()
+        return project_exists
 
     def check_project_exists(self, user_id: str, project_json: dict) -> bool:
         project_json_str = json.dumps(project_json, sort_keys=True)
@@ -144,7 +150,7 @@ class ProjectDao:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     """
-    """
+
     def apply_configuration(self, project_id, model_id, configuration_id: str):
         # Recuperar el proyecto
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -159,80 +165,46 @@ class ProjectDao:
 
         try:
             # Construir un diccionario de los valores de las características configuradas
-            feature_values = {feature['id']: feature['value'] for feature in configuration['features']}
-            relationship_values = {rel['id']: {prop['id']: prop['value'] for prop in rel['properties']} for rel in
-                                   configuration.get('relationships', [])}
+            feature_values = {}
+            for feature in configuration['features']:
+                for prop in feature.get('properties', []):
+                    if 'id' in prop and 'value' in prop:
+                        feature_values[prop['id']] = prop['value']
 
             # Aplicar la configuración a las características del modelo especificado
             for product_line in project.project['productLines']:
-                for model in product_line['domainEngineering']['models']:
-                    if model['id'] == model_id:
-                        for element in model['elements']:
-                            for prop in element.get('properties', []):
-                                if prop['id'] in feature_values:
-                                    prop['value'] = feature_values[prop['id']]
-                        for relation in model.get('relationships', []):
-                            if relation['id'] in relationship_values:
-                                for prop in relation['properties']:
-                                    prop['value'] = relationship_values[relation['id']]
-            # Devolver el proyecto modificado como JSON sin modificar la base de datos
-            return {"transactionId": "1", "message": "Configuration applied successfully", "data": project.project}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-    """
-    def apply_configuration(self, project_id, model_id, configuration_id: str):
-        # Recuperar el proyecto
-        project = self.db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        # Verificar y extraer las configuraciones del modelo especificado
-        model_configurations = project.configuration.get('modelConfigurations', {}).get(model_id, [])
-        configuration = next((config for config in model_configurations if config['id'] == configuration_id), None)
-        if not configuration:
-            raise HTTPException(status_code=404, detail="Configuration not found")
-
-        try:
-            # Construir un diccionario de los valores de las características configuradas
-            feature_values = {feature['id']: feature.get('value', 'Undefined') for feature in configuration['features']}
-            relationship_values = {
-                rel['id']: {prop['id']: prop.get('value', 'Undefined') for prop in rel.get('properties', [])}
-                for rel in configuration.get('relationships', [])
-            }
-
-            # Aplicar la configuración a las características del modelo especificado
-            for product_line in project.project['productLines']:
-                for model in product_line['domainEngineering']['models']:
-                    if model['id'] == model_id:
-                        # Aplicar valores a las características
-                        for element in model['elements']:
-                            if element['id'] in feature_values:
+                # Recorrer los modelos en domainEngineering
+                if 'domainEngineering' in product_line:
+                    for model in product_line['domainEngineering'].get('models', []):
+                        if model['id'] == model_id:
+                            for element in model['elements']:
                                 for prop in element.get('properties', []):
                                     if prop['id'] in feature_values:
-                                        prop['value'] = feature_values[element['id']]
-                        # Aplicar valores a las relaciones
-                        for relation in model.get('relationships', []):
-                            if relation['id'] in relationship_values:
-                                for prop in relation['properties']:
-                                    if prop['id'] in relationship_values[relation['id']]:
-                                        prop['value'] = relationship_values[relation['id']][prop['id']]
+                                        prop['value'] = feature_values[prop['id']]
+
+                # Recorrer los modelos en applicationEngineering
+                if 'applicationEngineering' in product_line:
+                    for model in product_line['applicationEngineering'].get('models', []):
+                        if model['id'] == model_id:
+                            for element in model['elements']:
+                                for prop in element.get('properties', []):
+                                    if prop['id'] in feature_values:
+                                        prop['value'] = feature_values[prop['id']]
+
+                # Recorrer los modelos en scope
+                if 'scope' in product_line:
+                    for model in product_line['scope'].get('models', []):
+                        if model['id'] == model_id:
+                            for element in model['elements']:
+                                for prop in element.get('properties', []):
+                                    if prop['id'] in feature_values:
+                                        prop['value'] = feature_values[prop['id']]
 
             # Devolver el proyecto modificado como JSON sin modificar la base de datos
+            print(project.project)
             return {"transactionId": "1", "message": "Configuration applied successfully", "data": project.project}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-
-    def get_configuration(self, project_id: str, configuration_id: str):
-        project = self.db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        for model_configs in project.configuration.get('modelConfigurations', {}).values():
-            for config in model_configs:
-                if config['id'] == configuration_id:
-                    return {"transactionId": "1", "message": "Configuration found", "data": config}
-
-        raise HTTPException(status_code=404, detail="Configuration not found")
 
     def get_model_configurations(self, project_id: str, model_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -252,7 +224,7 @@ class ProjectDao:
         self.db.close()
         records = []
         for project in projects:
-            records.append({"id":  project.id, "name": project.name, "template": project.template}) 
+            records.append({"id":  project.id, "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date})
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     """
@@ -283,22 +255,8 @@ class ProjectDao:
         return JSONResponse(content=content, status_code=200)
     """
 
-    def get_model_types(self, data):
-        tipos = set()  # Usamos un conjunto para evitar duplicados
-        for product_line in data.get("productLines", []):
-            domain_engineering = product_line.get("domainEngineering", {})
-            for model in domain_engineering.get("models", []):
-                tipos.add(model.get("type", ""))
-            application_engineering = product_line.get("applicationEngineering", {})
-            for model in application_engineering.get("models", []):
-                tipos.add(model.get("type", ""))
-        return list(tipos)
 
-    # Función para convertir la lista de tipos de modelos a una cadena separada por comas
-    def model_types_str(self, tipos_modelos):
-        return ', '.join(tipos_modelos)
-
-    def create_project(self, project_dict: dict, name : str, template: bool, description: str, source: str,  author: str, user_id: str):
+    def create_project(self, project_dict: dict, user_id: str):
         print("creando proyecto...")
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -306,9 +264,8 @@ class ProjectDao:
             raise Exception("El usuario no existe")
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
-        project = Project(id=str(uuid4()), name=name, project=project_dict,
-                          template=template, configuration=initial_configuration,description=description, source=source, author=author, date= datetime.now(),
-                          type_models=self.model_types_str(self.get_model_types(project_dict)))
+        project = Project(id=str(uuid4()), name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
+                          template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
@@ -320,23 +277,18 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def update_project(self, project_dict: dict, name : str, template: bool, description: str, source: str,  author: str, user_id: str):
+    def update_project(self, project_dict: dict, user_id: str):
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
-        current_date = datetime.now()
-        project = self.db.query(Project).filter(Project.project == project_dict).first()
-        if not project:
-            self.db.close()
-            raise Exception("El proyecto no existe")
-        project.name = name
-        project.template = template
-        project.description = description
-        project.source = source
-        project.author = author
-        project.date = current_date
-        project.type_models = self.model_types_str(self.get_model_types(project_dict))
+
+        id = project_dict.get("id")
+        project = Project(id=id, name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
+                          template=project_dict.get("template"))
+        self.db.query(Project).filter(Project.id == project.id).update(
+            {"name": project.name, "project": project.project, "template": project.template, "description": project.description, "author":project.author, "source":project.source,"date":project.date})
+
         self.db.commit()
         content = {"transactionId": "1", "message": "Project updated successfully", "data": {"id": id}}
         self.db.close()
@@ -345,7 +297,7 @@ class ProjectDao:
     def update_project_name(self, project_dict: dict):
         id=project_dict.get("id")
         project=Project(id=id, name=project_dict.get("name"), project=project_dict.get("project"), template=project_dict.get("template"))
-        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name})     
+        self.db.query(Project).filter(Project.id == project.id).update({"name": project.name})
         self.db.commit()
         self.db.close()
         content = {"transactionId": "1", "message": "Project name updated successfully"}
@@ -462,5 +414,3 @@ class ProjectDao:
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
         return {"users": users_list}
-
-
