@@ -1,6 +1,7 @@
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Table, Column, ForeignKey, Integer, String, JSON, MetaData
+from sqlalchemy import Boolean, Table, Column, ForeignKey, Integer, String, JSON, MetaData
+from sqlalchemy import DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -20,6 +21,7 @@ class Project(Base):
     source = Column(String,  nullable=True)
     author = Column(String,  nullable=True)
     date = Column(DateTime,  nullable=True)
+    type_models = Column(String, nullable=True)
 
 
 class User(Base):

@@ -42,8 +42,9 @@ class ConfigurationInput(BaseModel):
     config_name: str
     id: str
 
-class ConfigurationInput2(BaseModel): 
-    id_feature_model: str 
+
+class ConfigurationInput2(BaseModel):
+    id_feature_model: str
     id: str
 
 app = FastAPI()
@@ -62,7 +63,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.24.07.11.07"}
+    return {"transactionId": "1", "message": "vms_projects 1.25.2.14.14"}
 
 @app.get("/testdb")
 async def testDb():
