@@ -10,3 +10,4 @@ fastapi
 uvicorn
 docker
 pytest
+variamos-security
