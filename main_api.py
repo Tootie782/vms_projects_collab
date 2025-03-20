@@ -1,3 +1,5 @@
+import os
+import re
 import logging
 from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -41,13 +43,20 @@ class ConfigurationInput2(BaseModel):
     id: str
 
 app = FastAPI()
-origins = [
-    "*",
-    "https://app.variamos.com/"
+
+ALLOWED_ORIGINS_PATTERNS = [
+    re.compile(pattern) for pattern in os.getenv('VARIAMOS_CORS_ALLOWED_ORIGINS_PATTERNS', '').split(',')
 ]
+
+class CustomCORSMiddleware(CORSMiddleware):
+    def is_allowed_origin(self, origin: str) -> bool:
+        if not origin or origin == "null":
+            return True
+
+        return any(pattern.match(origin) for pattern in ALLOWED_ORIGINS_PATTERNS)
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
+    CustomCORSMiddleware,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
