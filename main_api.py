@@ -67,7 +67,7 @@ app.add_exception_handler(VariamosSecurityException, variamos_security_exception
 
 @app.get("/version")
 async def getVersion():
-    return {"transactionId": "1", "message": "vms_projects 1.25.2.14.14"}
+    return {"transactionId": "1", "message": "vms_projects 1.25.3.20.21"}
 
 @app.get("/testdb")
 async def testDb():
