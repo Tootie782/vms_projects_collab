@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from uvicorn.logging import DefaultFormatter
 
-from variamos_security import load_keys, is_authenticated, has_roles, has_permissions, SessionUser, VariamosSecurityException, variamos_security_exception_handler
+from variamos_security import (load_keys, is_authenticated, has_roles, has_permissions, SessionUser, VariamosSecurityException, variamos_security_exception_handler)
 
 import uuid
 from src.db_connector import get_db, SessionLocal
@@ -14,6 +14,10 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from src.model.modelDAO import UserDao, ProjectDao
 from pydantic import BaseModel
+from src.infrastructure.entry_points import (
+    projects_admin_controller_v1,
+    models_admin_controller_v1
+)
 
 # Configure logging
 formatter = DefaultFormatter()
@@ -22,10 +26,6 @@ handler.setFormatter(formatter)
 
 logging.basicConfig(level=logging.DEBUG, handlers=[handler])
 logger = logging.getLogger(__name__)
-
-class TokenRequest(BaseModel):
-    user_id: uuid.UUID
-
 
 class ShareProjectInput(BaseModel):
     user_id: str
@@ -64,6 +64,8 @@ app.add_middleware(
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app.add_exception_handler(VariamosSecurityException, variamos_security_exception_handler)
+app.include_router(projects_admin_controller_v1)
+app.include_router(models_admin_controller_v1)
 
 @app.get("/version")
 async def getVersion():
