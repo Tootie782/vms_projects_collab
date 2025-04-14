@@ -41,7 +41,7 @@ class UserDao:
 
         records = []
         for project in projects:
-            records.append({"id":  project.id, "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date})
+            records.append({"id":  project.id, "owner_id": project.owner_id , "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date})
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
@@ -264,7 +264,7 @@ class ProjectDao:
             raise Exception("El usuario no existe")
         initial_configuration = {  # Lista de configuraciones ahora por modelID
         }
-        project = Project(id=str(uuid4()), name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
+        project = Project(id=str(uuid4()), owner_id = user_id ,name=project_dict.get("name"), description=project_dict.get("description"), author=project_dict.get("author"), source=project_dict.get("source"), date= datetime.now(), project=project_dict.get("project"),
                           template=project_dict.get("template"), configuration=initial_configuration)
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear

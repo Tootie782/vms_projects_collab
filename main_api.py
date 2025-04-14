@@ -113,7 +113,16 @@ async def guardar_modelo(request: Request, project_dict: dict):
 @app.get("/getProjects", dependencies=[Depends(is_authenticated)])
 async def obtener_modelos(request: Request):
     user_id = request.state.user.id
-    return user_DAO.get_projects(user_id)
+
+    all_projects = user_DAO.get_projects(user_id)["data"]["projects"]
+    
+    owned_proyects = [project for project in all_projects if project["owner_id"] == user_id]
+    shared_proyects = [project for project in all_projects if project["owner_id"] != user_id]
+
+    return {
+        "owned_projects": owned_proyects,
+        "shared_projects": shared_proyects
+    }
 
 @app.get("/getTemplateProjects", dependencies=[Depends(is_authenticated)])
 async def obtener_modelos_template():
