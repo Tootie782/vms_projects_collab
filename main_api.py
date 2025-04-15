@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[handler])
 logger = logging.getLogger(__name__)
 
 class ShareProjectInput(BaseModel):
-    user_id: str
+    user_email: str
     project_id: str
 
 class ConfigurationInput(BaseModel):
@@ -135,7 +135,12 @@ async def obtener_modelo(project_id: str):
 
 @app.post("/shareProject", dependencies=[Depends(is_authenticated)])
 async def compartir_modelo(data: ShareProjectInput):
-    return project_DAO.share_project(data.project_id, data.user_id)
+
+    user = user_DAO.get_by_email(data.user_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return project_DAO.share_project(data.project_id, user.id)
 
 
 @app.get("/usersProject", dependencies=[Depends(is_authenticated)])

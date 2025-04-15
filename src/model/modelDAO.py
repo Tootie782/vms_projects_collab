@@ -389,8 +389,8 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def share_project(self, project_id: str, to_username: str):
-        user = self.db.query(User).filter(User.id == to_username).first()
+    def share_project(self, project_id: str, to_username_id: str):
+        user = self.db.query(User).filter(User.id == to_username_id).first()
         if not user:
             self.db.close()
             raise Exception("El usuario no existe")
