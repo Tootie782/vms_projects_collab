@@ -389,7 +389,7 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content=content, status_code=200)
 
-    def share_project(self, project_id: str, to_username_id: str):
+    def share_project(self, project_id: str, to_username_id: str, role: str):
         user = self.db.query(User).filter(User.id == to_username_id).first()
         if not user:
             self.db.close()
@@ -399,8 +399,19 @@ class ProjectDao:
                                        .where(and_(user_project_association.c.user_id == user.id,
                                                    user_project_association.c.project_id == project_id))).fetchone()
         if not assoc_exists:
-            assoc = user_project_association.insert().values(user_id=user.id, project_id=project_id)
+            assoc = user_project_association.insert().values(user_id=user.id, project_id=project_id, role=role)
             self.db.execute(assoc)
+        else:
+            self.db.execute(user_project_association.update()
+            .where(
+                and_(
+                    user_project_association.c.user_id == user.id,
+                    user_project_association.c.project_id == project_id
+                    )
+                )
+                .values(role=role)
+            )
+
         self.db.commit()
         self.db.close()
         return JSONResponse(content={"message": "Project shared successfully"},
@@ -423,3 +434,16 @@ class ProjectDao:
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
         self.db.close()
         return {"users": users_list}
+    
+    def get_user_role(self, project_id: str, user_id: str):
+        stmt = select(user_project_association.c.role).where(
+            and_(
+                user_project_association.c.project_id == project_id,
+                user_project_association.c.user_id == user_id
+            )
+        )
+        result = self.db.execute(stmt).fetchone()
+        if result:
+            return result.role
+        else:
+            return None

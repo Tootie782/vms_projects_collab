@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class ShareProjectInput(BaseModel):
     user_email: str
     project_id: str
+    user_role: str
 
 class ConfigurationInput(BaseModel):
     project_json: dict
@@ -140,14 +141,20 @@ async def compartir_modelo(data: ShareProjectInput):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return project_DAO.share_project(data.project_id, user.id)
-
+    return project_DAO.share_project(data.project_id, user.id, data.user_role)
 
 @app.get("/usersProject", dependencies=[Depends(is_authenticated)])
 async def obtener_usuarios_proyecto(request: Request, project_id: str):
     user_id = request.state.user.id
     return project_DAO.get_users(project_id, user_id)
 
+@app.get("/getUserRole", dependencies=[Depends(is_authenticated)])
+async def obtener_rol_usuario(request: Request, project_id: str):
+    user_id = request.state.user.id
+    role = project_DAO.get_user_role(project_id, user_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="User role not found")
+    return {"role": role}
 
 @app.get("/findUser")
 async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):
