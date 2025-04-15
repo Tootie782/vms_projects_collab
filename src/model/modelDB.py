@@ -12,7 +12,8 @@ Base = declarative_base(metadata=metadata)
 user_project_association = Table(
     'user_project', metadata,
     Column('user_id', String, ForeignKey('variamos.user.id'), primary_key=True),
-    Column('project_id', String, ForeignKey('variamos.project.id'), primary_key=True)
+    Column('project_id', String, ForeignKey('variamos.project.id'), primary_key=True),
+    Column('role', String, nullable=True)  # Rol del usuario en el proyecto
 )
 
 # Tabla de asociación

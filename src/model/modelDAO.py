@@ -33,15 +33,20 @@ class UserDao:
 
     def get_projects(self, user_id: str):
         # Primero, busquemos todos los project_ids asociados al user_id
-        stmt = select(user_project_association.c.project_id).where(user_project_association.c.user_id == user_id)
+        stmt = select(user_project_association.c.project_id, user_project_association.c.role).where(user_project_association.c.user_id == user_id)
         result = self.db.execute(stmt).fetchall()
-        project_ids = [row.project_id for row in result]
-        projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
-        self.db.close()
 
+        project_roles = [{"project_id": row.project_id, "role": row.role} for row in result]
+        project_ids = [row["project_id"] for row in project_roles]
+    
+        projects = self.db.query(Project).filter(Project.id.in_(project_ids)).all()
+    
         records = []
         for project in projects:
-            records.append({"id":  project.id, "owner_id": project.owner_id , "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date})
+            role = next((pr["role"] for pr in project_roles if pr["project_id"] == project.id), None)
+            records.append({"id":  project.id, "owner_id": project.owner_id , "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date, "role":role})
+        
+        self.db.close()
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
 
     def get_by_username(self, username: str):
@@ -269,7 +274,7 @@ class ProjectDao:
         self.db.add(project)
         self.db.flush()  # Obtener el ID de proyecto recién creado antes de commitear
         # Asociar el proyecto con el usuario en la tabla de asociación
-        assoc = user_project_association.insert().values(user_id=user_id, project_id=project.id)
+        assoc = user_project_association.insert().values(user_id=user_id, project_id=project.id, role="owner")
         self.db.execute(assoc)
         self.db.commit()
         print("proyecto creado")
@@ -374,8 +379,12 @@ class ProjectDao:
         if not project:
             self.db.close()
             raise Exception("Project not found")
+        # ELIMINAR ASOCIACIONES DE USUARIOS
+        self.db.execute(user_project_association.delete().where(user_project_association.c.project_id == id))
+
         self.db.delete(project)
         self.db.commit()
+        
         content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         self.db.close()
         return JSONResponse(content=content, status_code=200)

@@ -116,8 +116,8 @@ async def obtener_modelos(request: Request):
 
     all_projects = user_DAO.get_projects(user_id)["data"]["projects"]
     
-    owned_proyects = [project for project in all_projects if project["owner_id"] == user_id]
-    shared_proyects = [project for project in all_projects if project["owner_id"] != user_id]
+    owned_proyects = [project for project in all_projects if project["role"] == "owner"]
+    shared_proyects = [project for project in all_projects if project["role"] != "owner"]
 
     return {
         "owned_projects": owned_proyects,
