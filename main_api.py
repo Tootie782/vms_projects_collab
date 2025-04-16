@@ -43,6 +43,9 @@ class ConfigurationInput2(BaseModel):
     id_feature_model: str
     id: str
 
+class ChangeCollaborativeInput(BaseModel):
+    project_id: str
+
 app = FastAPI()
 
 ALLOWED_ORIGINS_PATTERNS = [
@@ -155,6 +158,11 @@ async def obtener_rol_usuario(request: Request, project_id: str):
     if not role:
         raise HTTPException(status_code=404, detail="User role not found")
     return {"role": role}
+
+@app.post("/changeProjectCollaborative", dependencies=[Depends(is_authenticated)])
+async def cambiar_colaborativo(request: Request, data: ChangeCollaborativeInput):
+    user_id = request.state.user.id
+    return project_DAO.change_project_collaborative(data.project_id, user_id)
 
 @app.get("/findUser")
 async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):

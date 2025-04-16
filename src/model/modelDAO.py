@@ -427,13 +427,16 @@ class ProjectDao:
         if not is_user_associated:
             self.db.close()
             raise Exception("El usuario no tiene permiso para ver los usuarios de este proyecto.")
-        stmt = select(user_project_association.c.user_id).where(user_project_association.c.project_id == project_id)
+        stmt = select(user_project_association.c.user_id, user_project_association.c.role).where(user_project_association.c.project_id == project_id)
         result = self.db.execute(stmt).fetchall()
-        user_ids = [row.user_id for row in result]
+
+        user_roles = {row.user_id: row.role for row in result}
+
+        user_ids = list(user_roles.keys())
         users = self.db.query(User).filter(User.id.in_(user_ids)).all()
-        users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email} for user in users]
+        users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email, "role": user_roles.get(user.id)} for user in users]
         self.db.close()
-        return {"users": users_list}
+        return {"data": {"users": users_list}}
     
     def get_user_role(self, project_id: str, user_id: str):
         stmt = select(user_project_association.c.role).where(
@@ -447,3 +450,18 @@ class ProjectDao:
             return result.role
         else:
             return None
+        
+    def change_project_collaborative(self, project_id: str , user_id:str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise Exception("El proyecto no existe")
+        if project.owner_id != user_id:
+            self.db.close()
+            raise Exception("El usuario no es el propietario del proyecto")
+        project.is_collaborative = not project.is_collaborative
+        self.db.commit()
+        collaborative_state = project.is_collaborative
+        self.db.close()
+        return JSONResponse(content={"message": "Project collaborative status changed successfully", "data": {"collaborativeState": collaborative_state}},
+                            status_code=200)
