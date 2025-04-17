@@ -32,7 +32,7 @@ class Project(Base):
     author = Column(String,  nullable=True)
     date = Column(DateTime,  nullable=True)
     type_models = Column(String, nullable=True)
-    is_collaborative = Column(Boolean, default=False)
+    is_collaborative = Column(Boolean, default=False, nullable=False)
 
     owner = relationship("User", back_populates="owned_projects")
 

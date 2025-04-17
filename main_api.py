@@ -43,8 +43,14 @@ class ConfigurationInput2(BaseModel):
     id_feature_model: str
     id: str
 
-class ChangeCollaborativeInput(BaseModel):
+class ChangeCollaboratorInput(BaseModel):
     project_id: str
+
+class ChangeUserRoleInput(BaseModel):
+    project_id: str
+    collaborator_id: str
+    role: str
+
 
 app = FastAPI()
 
@@ -121,7 +127,11 @@ async def obtener_modelos(request: Request):
     all_projects = user_DAO.get_projects(user_id)["data"]["projects"]
     
     owned_proyects = [project for project in all_projects if project["role"] == "owner"]
-    shared_proyects = [project for project in all_projects if project["role"] != "owner"]
+    shared_proyects = [
+        project for project in all_projects
+          if project["role"] != "owner"
+          and project["is_collaborative"] == True
+    ]
 
     return {
         "owned_projects": owned_proyects,
@@ -151,18 +161,28 @@ async def obtener_usuarios_proyecto(request: Request, project_id: str):
     user_id = request.state.user.id
     return project_DAO.get_users(project_id, user_id)
 
+@app.delete("/removeCollaborator", dependencies=[Depends(is_authenticated)])
+async def delete_collaborator_endpoint(request: Request, project_id: str, collaborator_id: str):
+    user_id = request.state.user.id
+    return project_DAO.delete_collaborator(project_id, user_id, collaborator_id)
+
+@app.post("/changeUserRole", dependencies=[Depends(is_authenticated)])
+async def cambiar_rol_usuario(request: Request, data: ChangeUserRoleInput):
+    user_id = request.state.user.id
+    return project_DAO.change_user_role(data.project_id, user_id, data.collaborator_id, data.role)
+
+@app.post("/changeProjectCollaborative", dependencies=[Depends(is_authenticated)])
+async def cambiar_colaborativo(request: Request, data: ChangeCollaboratorInput):
+    user_id = request.state.user.id
+    return project_DAO.change_project_collaborative(data.project_id, user_id)
+
 @app.get("/getUserRole", dependencies=[Depends(is_authenticated)])
 async def obtener_rol_usuario(request: Request, project_id: str):
     user_id = request.state.user.id
     role = project_DAO.get_user_role(project_id, user_id)
     if not role:
         raise HTTPException(status_code=404, detail="User role not found")
-    return {"role": role}
-
-@app.post("/changeProjectCollaborative", dependencies=[Depends(is_authenticated)])
-async def cambiar_colaborativo(request: Request, data: ChangeCollaborativeInput):
-    user_id = request.state.user.id
-    return project_DAO.change_project_collaborative(data.project_id, user_id)
+    return {"data": {"role": role}}
 
 @app.get("/findUser")
 async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):

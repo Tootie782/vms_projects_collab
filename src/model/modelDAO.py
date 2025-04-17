@@ -44,7 +44,7 @@ class UserDao:
         records = []
         for project in projects:
             role = next((pr["role"] for pr in project_roles if pr["project_id"] == project.id), None)
-            records.append({"id":  project.id, "owner_id": project.owner_id , "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date, "role":role})
+            records.append({"id":  project.id, "owner_id": project.owner_id , "name": project.name, "template": project.template, "description": project.description, "source": project.source, "author": project.author, "date": project.date, "role":role, "is_collaborative": project.is_collaborative})
         
         self.db.close()
         return {"transactionId": "1", "message": "Ok", "data": { "projects": records}}
@@ -388,7 +388,7 @@ class ProjectDao:
         content = {"transactionId": "1", "message": "Project deleted successfully", "data": {"id": id}}
         self.db.close()
         return JSONResponse(content=content, status_code=200)
-
+    
     def share_project(self, project_id: str, to_username_id: str, role: str):
         user = self.db.query(User).filter(User.id == to_username_id).first()
         if not user:
@@ -437,19 +437,66 @@ class ProjectDao:
         users_list = [{"id": user.id, "username": user.user, "name": user.name, "email": user.email, "role": user_roles.get(user.id)} for user in users]
         self.db.close()
         return {"data": {"users": users_list}}
-    
-    def get_user_role(self, project_id: str, user_id: str):
-        stmt = select(user_project_association.c.role).where(
+
+    def delete_collaborator(self, project_id: str, user_id: str, collaborator_id: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise Exception("El proyecto no existe")
+        if project.owner_id != user_id:
+            self.db.close()
+            raise Exception("El usuario no es el propietario del proyecto")
+        
+        assoc_exists = self.db.query(user_project_association).filter(
             and_(
-                user_project_association.c.project_id == project_id,
-                user_project_association.c.user_id == user_id
+                user_project_association.c.user_id == collaborator_id,
+                user_project_association.c.project_id == project_id
             )
-        )
-        result = self.db.execute(stmt).fetchone()
-        if result:
-            return result.role
-        else:
-            return None
+        ).first()
+        if not assoc_exists:
+            self.db.close()
+            raise Exception("El colaborador no existe en el proyecto")
+        
+        self.db.execute(user_project_association.delete().where(
+            and_(
+                user_project_association.c.user_id == collaborator_id,
+                user_project_association.c.project_id == project_id
+            )
+        ))
+        self.db.commit()
+        self.db.close()
+        return JSONResponse(content={"message": "Collaborator deleted successfully"},
+                            status_code=200)
+
+    def change_user_role(self, project_id: str, user_id: str, collaborator_id: str, role: str):
+        project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise Exception("El proyecto no existe")
+        if project.owner_id != user_id:
+            self.db.close()
+            raise Exception("El usuario no es el propietario del proyecto")
+        
+        assoc_exists = self.db.query(user_project_association).filter(
+            and_(
+                user_project_association.c.user_id == collaborator_id,
+                user_project_association.c.project_id == project_id
+            )
+        ).first()
+        if not assoc_exists:
+            self.db.close()
+            raise Exception("El colaborador no existe en el proyecto")
+        
+        self.db.execute(user_project_association.update().where(
+            and_(
+                user_project_association.c.user_id == collaborator_id,
+                user_project_association.c.project_id == project_id
+            )
+        ).values(role=role))
+        self.db.commit()
+        self.db.close()
+        return JSONResponse(content={"message": "Collaborator role changed successfully"},
+                            status_code=200)
         
     def change_project_collaborative(self, project_id: str , user_id:str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -465,3 +512,18 @@ class ProjectDao:
         self.db.close()
         return JSONResponse(content={"message": "Project collaborative status changed successfully", "data": {"collaborativeState": collaborative_state}},
                             status_code=200)
+    
+    def get_user_role(self, project_id: str, user_id: str):
+        stmt = select(user_project_association.c.role).where(
+            and_(
+                user_project_association.c.project_id == project_id,
+                user_project_association.c.user_id == user_id
+            )
+        )
+        result = self.db.execute(stmt).fetchone()
+        if result:
+            self.db.close()
+            return result.role
+        else:
+            self.db.close()
+            return None
