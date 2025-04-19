@@ -106,6 +106,13 @@ def close_db():
     db.close()
 
 
+@app.get("/getUser", dependencies=[Depends(is_authenticated)])
+async def obtener_usuario(request: Request):
+    user = request.state.user
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"data": {"user": user}}
+
 @app.post("/saveProject", dependencies=[Depends(is_authenticated)])
 async def guardar_modelo(request: Request, project_dict: dict):
     template=False
