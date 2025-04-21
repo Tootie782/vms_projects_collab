@@ -150,8 +150,9 @@ async def obtener_modelos_template():
     return project_DAO.get_template_projects()
 
 @app.get("/getProject", dependencies=[Depends(is_authenticated)])
-async def obtener_modelo(project_id: str):
-    return project_DAO.get_by_id(project_id)
+async def obtener_modelo(request: Request, project_id: str):
+    user_id = request.state.user.id
+    return project_DAO.get_by_id(user_id, project_id)
 
 
 @app.post("/shareProject", dependencies=[Depends(is_authenticated)])
@@ -186,10 +187,7 @@ async def cambiar_colaborativo(request: Request, data: ChangeCollaboratorInput):
 @app.get("/getUserRole", dependencies=[Depends(is_authenticated)])
 async def obtener_rol_usuario(request: Request, project_id: str):
     user_id = request.state.user.id
-    role = project_DAO.get_user_role(project_id, user_id)
-    if not role:
-        raise HTTPException(status_code=404, detail="User role not found")
-    return {"data": {"role": role}}
+    return project_DAO.get_user_role(project_id, user_id)
 
 @app.get("/findUser")
 async def buscar_usuario_email(user_mail: str, db: Session = Depends(get_db)):

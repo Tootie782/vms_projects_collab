@@ -96,10 +96,50 @@ class ProjectDao:
         )).scalar()
         return project_exists
 
-    def get_by_id(self, project_id: str):
+    def get_by_id(self, user_id: str, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            self.db.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        role = None
+        collaborators = []
+
+        if not project.template:
+            try:
+                role_data = self.get_user_role(project_id, user_id)
+                role = role_data["data"]["role"]
+            except HTTPException as e:
+                if e.status_code == 404:
+                    role = None 
+                else:
+                    raise e 
+
+            # Intentar obtener los colaboradores
+            try:
+                collaborators_data = self.get_users(project_id, user_id)
+                collaborators = collaborators_data["data"]["users"]
+            except Exception as e:
+                collaborators = []
+
+        project_data = {
+            "id": project.id,
+            "name": project.name,
+            "owner_id": project.owner_id,
+            "project": project.project,
+            "template": project.template,
+            "description": project.description,
+            "source": project.source,
+            "author": project.author,
+            "date": project.date,
+            "configuration": project.configuration,
+            "is_collaborative": project.is_collaborative,
+            "role": role,
+            "collaborators": collaborators
+        }
+
         self.db.close()
-        return {"transactionId": "1", "message": "Ok", "data": {"project": project}}
+        return {"transactionId": "1", "message": "Ok", "data": {"project": project_data}}
 
     """
     def get_all_configurations(self, project_id: str):
@@ -413,8 +453,17 @@ class ProjectDao:
             )
 
         self.db.commit()
+
+        user_info = {
+            "id": user.id,
+            "username": user.user,
+            "name": user.name,
+            "email": user.email,
+            "role": role
+        }
+
         self.db.close()
-        return JSONResponse(content={"message": "Project shared successfully"},
+        return JSONResponse(content={"message": "Project shared successfully", "data": user_info},
                             status_code=200)
 
     def get_users(self, project_id: str, requesting_user_id: str):
@@ -522,8 +571,8 @@ class ProjectDao:
         )
         result = self.db.execute(stmt).fetchone()
         if result:
-            self.db.close()
-            return result.role
+            role = result.role
+            return {"message": "Role retrieved successfully", "data": {"role": role}}
         else:
-            self.db.close()
-            return None
+            raise HTTPException(status_code=404, detail="Role not found")
+
