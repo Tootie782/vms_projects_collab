@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import text, update
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from variamos_security import has_permissions, ResponseModel
 from typing import Optional, Any
 import logging
 
 from src.db_connector import get_db
-from src.model.modelDB import Project
 
 logger = logging.getLogger(__name__)
 class ModelDTO(BaseModel):
@@ -116,66 +115,6 @@ def get_models(
 
 @router.put("/{project_id}", dependencies=[Depends(has_permissions(["admin::models::update"]))])
 def update_model(db: Session = Depends(get_db)):
-    sql = text("SELECT project.id FROM variamos.project")
-    projects_ids = db.execute(sql).fetchall()
-
-    for project_id in projects_ids:
-        id = project_id[0]
-        db_project = db.query(Project).filter(Project.id == id).first()
-
-        if not db_project or not db_project.project:
-            logger.warning(f"Project with ID {id} not found.")
-            continue
-
-        project = db_project.project
-
-        if "productLines" not in project:
-            continue
-
-        is_project_updated = False
-
-        if not db_project.author and not db_project.source and not db_project.description:
-            continue
-
-        for product_line in project["productLines"]:
-            if not product_line:
-                continue
-
-            domain_models = product_line.get("domainEngineering", {}).get("models", [])
-
-            for model in domain_models:
-                if not model.get("id") or model.get("author") is not None or model.get("source") is not None or model.get("description") is not None:
-                    continue
-
-                is_project_updated = True
-
-                model["author"] = db_project.author
-                model["source"] = db_project.source
-                model["description"] = db_project.description
-
-            application_models = product_line.get("applicationEngineering", {}).get("models", [])
-
-            for model in application_models:
-                if not model.get("id") or model.get("author") is not None or model.get("source") is not None or model.get("description") is not None:
-                    continue
-
-                is_project_updated = True
-
-                model["author"] = db_project.author
-                model["source"] = db_project.source
-                model["description"] = db_project.description
-        
-        if is_project_updated:
-            logger.info(f"Project ID: {id}")
-            
-            stmt = (
-                update(Project)
-                .where(Project.id == id)
-                .values(project=project)
-            )
-            db.execute(stmt)
-            db.commit()
-  
     return {"message": "Model update"}
 
 @router.delete("/{project_id}", dependencies=[Depends(has_permissions(["admin::models::delete"]))])
