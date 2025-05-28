@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import text, update
 from sqlalchemy.orm import Session
 from variamos_security import has_permissions, ResponseModel
 from typing import Optional, Any
 import logging
 
 from src.db_connector import get_db
+from src.model.modelDB import Project
 
 logger = logging.getLogger(__name__)
 class ModelDTO(BaseModel):
@@ -113,10 +114,66 @@ def get_models(
     
     return ResponseModel( transactionId="ModelsAdminQuery", totalCount=count_result, data=models)
 
-@router.put("/{project_id}", dependencies=[Depends(has_permissions(["admin::models::update"]))])
-def update_model(db: Session = Depends(get_db)):
-    return {"message": "Model update"}
+@router.put("/{model_id}", dependencies=[Depends(has_permissions(["admin::models::update"]))])
+def update_model(model_id: str, model: ModelDTO, db: Session = Depends(get_db)):
+    model.id = model_id
+    project_id = model.projectId
+    db_project = db.query(Project).filter(Project.id == project_id).first()
 
-@router.delete("/{project_id}", dependencies=[Depends(has_permissions(["admin::models::delete"]))])
+    if not db_project:
+        return ResponseModel( transactionId="ProjectsAdminUpdate", errorCode=404, message="Project not found")
+    
+    updatedModel = update_model(db_project, model)
+
+    if not updatedModel:
+        return ResponseModel( transactionId="ProjectsAdminUpdate", errorCode=404, message="Model not found")
+    
+    stmt = (
+        update(Project)
+        .where(Project.id == project_id)
+        .values(project=db_project.project)
+    )
+    db.execute(stmt)
+    db.commit()
+
+    return ResponseModel( transactionId="ProjectsAdminUpdate", data=model)
+
+def update_model(db_project: Project, model_dto: ModelDTO):
+    product_lines = db_project.project.get("productLines", [])
+    model_id = model_dto.id
+
+    for product_line in product_lines:
+        if not product_line:
+            continue
+
+        domain_models = product_line.get("domainEngineering", {}).get("models", [])
+
+        for model in domain_models:
+            if not model or model.get("id") != model_id:
+                continue
+
+            model["name"] = model_dto.name
+            model["author"] = model_dto.author
+            model["source"] = model_dto.source
+            model["description"] = model_dto.description
+
+            return model
+
+        application_models = product_line.get("applicationEngineering", {}).get("models", [])
+
+        for model in application_models:
+            if not model or model.get("id") != model_id:
+                continue
+
+            model["name"] = model_dto.name
+            model["author"] = model_dto.author
+            model["source"] = model_dto.source
+            model["description"] = model_dto.description
+            
+            return model
+        
+    return None
+
+@router.delete("/{model_id}", dependencies=[Depends(has_permissions(["admin::models::delete"]))])
 def delete_model():
     return {"message": "Model deleted"}
